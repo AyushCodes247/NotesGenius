@@ -1,0 +1,46 @@
+import type {
+  ErrorRequestHandler,
+  Request,
+  Response,
+  NextFunction,
+} from "express";
+import env from "@configs/env.config.js";
+import { AppError } from "@utils/error.util.js";
+
+const globalErrorHandler: ErrorRequestHandler = (
+  err: Error,
+  _req: Request,
+  res: Response,
+  _next: NextFunction,
+) => {
+  let error: AppError;
+
+  if (err instanceof AppError) {
+    error = err;
+  } else {
+    error = new AppError(
+      "Internal server error",
+      500,
+      err instanceof Error ? err : undefined,
+    );
+  }
+
+  const response: Record<string, unknown> = {
+    success: false,
+    status: error.status,
+    message: error.message,
+  };
+
+  if (env.NODE_ENV !== "production") {
+    response["error"] = {
+      name: error.name,
+      statusCode: error.statusCode,
+      stack: error.stack,
+      cause: error.cause,
+    };
+  }
+
+  res.status(error.statusCode).json(response);
+};
+
+export default globalErrorHandler;
