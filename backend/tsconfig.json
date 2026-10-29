@@ -30,12 +30,13 @@
 
     "skipLibCheck": true,
 
-    "paths" : {
-      "@/*" : ["./src/*"],
-      "@configs/*" : ["./src/configs/*"],
-      "@utils/*" : ["./src/utils/*"],
-      "@middlewares/*" : ["./src/middlewares/*"],
-      "@routes/*" : ["./src/routes/*"]
+    "paths": {
+      "@/*": ["./src/*"],
+      "@configs/*": ["./src/configs/*"],
+      "@utils/*": ["./src/utils/*"],
+      "@middlewares/*": ["./src/middlewares/*"],
+      "@routes/*": ["./src/routes/*"],
+      "@schemas/*": ["./src/schemas/*"]
     }
   },
   "include": ["src/**/*.ts"],
