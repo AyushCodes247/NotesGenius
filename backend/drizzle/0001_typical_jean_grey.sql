@@ -1,0 +1,2 @@
+DROP INDEX "document_vector_embedding_hnsw_idx";--> statement-breakpoint
+CREATE INDEX "document_vector_embedding_hnsw_idx" ON "document_vector" USING hnsw (("embedding"::halfvec(3072)) halfvec_cosine_ops);

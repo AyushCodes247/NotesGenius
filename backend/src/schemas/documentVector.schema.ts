@@ -58,7 +58,7 @@ export const documentVectorTable = pgTable(
 
     index("document_vector_embedding_hnsw_idx").using(
       "hnsw",
-      sql`${table.embedding} vector_cosine_ops`,
+      sql`(${table.embedding}::halfvec(3072)) halfvec_cosine_ops`,
     ),
   ],
 );
