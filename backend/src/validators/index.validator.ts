@@ -22,6 +22,7 @@ const passwordValidator = z
 
 const usernameValidator = z
   .string()
+  .trim()
   .min(3, "Username must contain at least 3 characters")
   .max(30, "Username cannot exceed 30 characters")
   .regex(
@@ -32,12 +33,16 @@ const usernameValidator = z
 const userhandleValidator = z
   .string()
   .trim()
-  .toLowerCase()
-  .min(3, "Userhandle must contain at least 3 characters")
-  .max(30, "Userhandle cannot exceed 30 characters")
-  .regex(
-    /^[a-z0-9]+(?:_[a-z0-9]+)*$/,
-    "Userhandle can contain only lowercase letters, numbers, and single underscores.",
+  .transform((value) => value.replace(/^@/, "").toLowerCase())
+  .pipe(
+    z
+      .string()
+      .min(3, "Userhandle must contain at least 3 characters")
+      .max(30, "Userhandle cannot exceed 30 characters")
+      .regex(
+        /^[a-z0-9]+(?:_[a-z0-9]+)*$/,
+        "Userhandle can contain only lowercase letters, numbers, and single underscores.",
+      ),
   );
 
 export const registerSchema = z.object({
@@ -46,6 +51,7 @@ export const registerSchema = z.object({
       email: emailValidator,
       password: passwordValidator,
       username: usernameValidator,
+      userhandle: userhandleValidator,
     })
     .strict(),
 });

@@ -2,30 +2,30 @@ import { Router } from "express";
 import {
   registerSchema,
   loginSchema,
-  updateSchema,
   handleSchema,
+  updateSchema,
 } from "@validators/index.validator.js";
 import validate from "@middlewares/validate.middleware.js";
+import UserController from "@controllers/users/index.controller.js";
+import auth from "@middlewares/auth.middleware.js";
 
 export const router: Router = Router();
 
-// Register
-router.post("/register", validate(registerSchema));
+router.post("/register", validate(registerSchema), UserController.register);
 
-// // Login
-// router.post("/login");
+router.post("/login", validate(loginSchema), UserController.login);
 
-// // Profile
-// router.get("/me");
+router.get("/me", auth, UserController.profile);
 
-// Update the username
-// router.patch("/me");
+router.patch("/me", auth, validate(updateSchema), UserController.updateProfile);
 
-// Create or Update Handle
-// router.put("/handle");
+router.put(
+  "/handle",
+  auth,
+  validate(handleSchema),
+  UserController.updateHandle,
+);
 
-// Refresh Token
-// router.post("/refresh");
+router.post("/refresh", UserController.refresh);
 
-// Logout
-// router.post("/logout");
+router.post("/logout", auth, UserController.logout);

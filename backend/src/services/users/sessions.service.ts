@@ -25,6 +25,22 @@ const hashToken = (token: string): string => {
   return crypto.createHash("sha256").update(token).digest("hex");
 };
 
+const ROTATE_TOKENS_SCRIPT = `
+  local storedHash = redis.call("GET", KEYS[1])
+
+  if not storedHash or storedHash ~= ARGV[1] then
+    return 0
+  end
+
+  -- Update refresh token.
+  redis.call("SET", KEYS[1], ARGV[2], "EX", ARGV[4])
+
+  -- Update access token.
+  redis.call("SET", KEYS[2], ARGV[3], "EX", ARGV[5])
+
+  return 1
+`;
+
 export const storeToken = async (
   publicId: string,
   token: string,
@@ -65,4 +81,25 @@ export const deleteToken = async (
   const key = getTokenKey(publicId, type);
 
   return redis.del(key);
+};
+
+export const rotateTokens = async (
+  publicId: string,
+  oldRefreshToken: string,
+  newRefreshToken: string,
+  newAccessToken: string,
+): Promise<boolean> => {
+  const result = await redis.eval(
+    ROTATE_TOKENS_SCRIPT,
+    2,
+    getTokenKey(publicId, "refresh"),
+    getTokenKey(publicId, "access"),
+    hashToken(oldRefreshToken),
+    hashToken(newRefreshToken),
+    hashToken(newAccessToken),
+    REFRESH_TOKEN_TTL,
+    ACCESS_TOKEN_TTL,
+  );
+
+  return result === 1;
 };

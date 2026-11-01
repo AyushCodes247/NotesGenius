@@ -55,6 +55,8 @@ const globalErrorHandler: ErrorRequestHandler = (
     };
   }
 
+  console.error(error)
+
   res.status(error.statusCode).json(response);
 };
 
