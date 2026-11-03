@@ -39,7 +39,11 @@
       "@schemas/*": ["./src/schemas/*.ts"],
       "@controllers/*" : ["./src/controllers/*"],
       "@services/*" : ["./src/services/*"],
-      "@validators/*" : ["./src/validators/*"]
+      "@validators/*" : ["./src/validators/*"],
+      "@ai/providers/*" : ["./src/ai/providers/*"],
+      "@ai/content/*" : ["./src/ai/content/*"],
+      "@ai/constants/*" : ["./src/ai/constants/*"],
+      "@ai/prompts/*" : ["./src/ai/prompts/*"]
     }
   },
   "include": ["src/**/*.ts"],
