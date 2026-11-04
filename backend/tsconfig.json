@@ -37,13 +37,16 @@
       "@middlewares/*": ["./src/middlewares/*"],
       "@routes/*": ["./src/routes/*"],
       "@schemas/*": ["./src/schemas/*.ts"],
-      "@controllers/*" : ["./src/controllers/*"],
-      "@services/*" : ["./src/services/*"],
-      "@validators/*" : ["./src/validators/*"],
-      "@ai/providers/*" : ["./src/ai/providers/*"],
-      "@ai/content/*" : ["./src/ai/content/*"],
-      "@ai/constants/*" : ["./src/ai/constants/*"],
-      "@ai/prompts/*" : ["./src/ai/prompts/*"]
+      "@controllers/*": ["./src/controllers/*"],
+      "@services/*": ["./src/services/*"],
+      "@validators/*": ["./src/validators/*"],
+      "@ai/providers/*": ["./src/ai/providers/*"],
+      "@ai/content/*": ["./src/ai/content/*"],
+      "@ai/constants/*": ["./src/ai/constants/*"],
+      "@ai/prompts/*": ["./src/ai/prompts/*"],
+      "@ai/services/*": ["./src/ai/services/*"],
+      "@ai/generators/*" : ["./src/ai/generators/*"],
+      "@models/*" : ["./src/models/*"]
     }
   },
   "include": ["src/**/*.ts"],

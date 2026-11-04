@@ -4,32 +4,57 @@ import { z } from "zod";
 dotenv.config();
 
 const envSchema = z.object({
+  // Server
   PORT: z.coerce.number().int().positive().default(3000),
-  DATABASE_URL: z.string().min(1),
+
   NODE_ENV: z
     .enum(["development", "production", "test"])
     .default("development"),
 
+  // PostgreSQL
+  DATABASE_URL: z.string().min(1),
+
+  // MongoDB
+  MONGODB_URI: z
+    .string()
+    .min(1)
+    .refine(
+      (uri) => uri.startsWith("mongodb://") || uri.startsWith("mongodb+srv://"),
+      "Invalid MongoDB connection string.",
+    ),
+
+  // Authentication
   JWT_ACCESS: z.string().min(1),
   JWT_REFRESH: z.string().min(1),
 
+  // Redis
+  REDIS_HOST: z.string().min(1).default("127.0.0.1"),
   REDIS_PORT: z.coerce.number().int().positive().default(6379),
-  REDIS_HOST: z.string().min(1),
   REDIS_PASSWORD: z.string().default(""),
 
+  // CORS
   CORS_ORIGIN: z.string().min(1),
 
+  // Gemini
   GEMINI_API_KEY: z.string().min(1),
-  GEMINI_GENERATION_MODEL: z.string().default("gemini-3.8-flash"),
-  GEMINI_EMBEDDING_MODEL: z.string().default("gemini-embedding-2"),
+
+  GEMINI_GENERATION_MODEL: z.string().min(1).default("gemini-3.8-flash"),
+
+  GEMINI_EMBEDDING_MODEL: z.string().min(1).default("gemini-embedding-2"),
+
   GEMINI_EMBEDDING_DIMENSIONS: z.coerce.number().int().positive().default(3072),
+
+  // File uploads
+  UPLOAD_PATHS: z.string().min(1),
 });
 
 const parsedEnv = envSchema.safeParse(process.env);
 
 if (!parsedEnv.success) {
   console.error("Invalid environment variables:");
-  console.error(parsedEnv.error.flatten().fieldErrors);
+
+  console.error(z.treeifyError(parsedEnv.error));
+
   process.exit(1);
 }
 

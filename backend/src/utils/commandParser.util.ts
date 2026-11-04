@@ -4,6 +4,8 @@ import {
   type Command,
 } from "@ai/constants/commands.constant.js";
 
+import { AppError } from "@utils/general.util.js";
+
 interface ParsedCommand {
   command: Command;
   query: string;
@@ -19,23 +21,22 @@ const parseCommand = (input: string): ParsedCommand => {
     };
   }
 
-  const [firstWord = ""] = normalizedInput.split(/\s+/);
+  const [firstWord = "", ...remainingWords] = normalizedInput.split(/\s+/);
 
-  let command: Command = DEFAULT_COMMAND;
-  let query = normalizedInput;
+  if (!firstWord.startsWith("@")) {
+    return {
+      command: DEFAULT_COMMAND,
+      query: normalizedInput,
+    };
+  }
 
-  if (firstWord.startsWith("@")) {
-    if (!COMMANDS.includes(firstWord as Command)) {
-      throw new Error(`Unsupported command: ${firstWord}`);
-    }
-
-    command = firstWord as Command;
-    query = normalizedInput.slice(firstWord.length).trim();
+  if (!COMMANDS.includes(firstWord as Command)) {
+    throw new AppError(`Unsupported command: ${firstWord}`, 400);
   }
 
   return {
-    command,
-    query,
+    command: firstWord as Command,
+    query: remainingWords.join(" "),
   };
 };
 
