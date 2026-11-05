@@ -1,13 +1,13 @@
 import {
   pgTable,
   bigserial,
-  bigint,
   integer,
   text,
   unique,
   check,
   customType,
   index,
+  uuid,
 } from "drizzle-orm/pg-core";
 import { sql } from "drizzle-orm";
 import { documentMetaTable } from "./documentMeta.schema.js";
@@ -34,13 +34,9 @@ export const documentVectorTable = pgTable(
       mode: "bigint",
     }).primaryKey(),
 
-    documentId: bigint("document_id", {
-      mode: "bigint",
-    })
-      .notNull()
-      .references(() => documentMetaTable.internalId, {
-        onDelete: "cascade",
-      }),
+    documentId: uuid("document_public_id")
+      .references(() => documentMetaTable.publicId)
+      .notNull(),
 
     chunkIndex: integer("chunk_index").notNull(),
 

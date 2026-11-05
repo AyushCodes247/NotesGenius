@@ -2,7 +2,6 @@ import {
   pgTable,
   bigserial,
   uuid,
-  bigint,
   integer,
   numeric,
   timestamp,
@@ -31,19 +30,15 @@ export const quizAttemptTable = pgTable(
       .notNull()
       .unique(),
 
-    quizId: bigint("quiz_id", {
-      mode: "bigint",
-    })
+    quizId: uuid("quiz_public_id")
       .notNull()
-      .references(() => quizTable.internalId, {
+      .references(() => quizTable.publicId, {
         onDelete: "restrict",
       }),
 
-    userId: bigint("user_id", {
-      mode: "bigint",
-    })
+    userId: uuid("user_public_id")
       .notNull()
-      .references(() => userTable.internalId, {
+      .references(() => userTable.publicId, {
         onDelete: "restrict",
       }),
 

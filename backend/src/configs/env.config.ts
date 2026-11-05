@@ -44,6 +44,8 @@ const envSchema = z.object({
 
   GEMINI_EMBEDDING_DIMENSIONS: z.coerce.number().int().positive().default(3072),
 
+  GEMINI_BASE_URL: z.string().min(1),
+
   // File uploads
   UPLOAD_PATHS: z.string().min(1),
 });

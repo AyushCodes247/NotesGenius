@@ -2,7 +2,6 @@ import {
   pgTable,
   bigserial,
   uuid,
-  bigint,
   timestamp,
   check,
 } from "drizzle-orm/pg-core";
@@ -22,19 +21,15 @@ export const noteShareTable = pgTable(
       .notNull()
       .unique(),
 
-    noteId: bigint("note_id", {
-      mode: "bigint",
-    })
+    noteId: uuid("note_public_id")
       .notNull()
-      .references(() => noteTable.internalId, {
+      .references(() => noteTable.publicId, {
         onDelete: "cascade",
       }),
 
-    recipientUserId: bigint("recipient_user_id", {
-      mode: "bigint",
-    })
+    recipientUserId: uuid("recipient_user_public_id")
       .notNull()
-      .references(() => userTable.internalId, {
+      .references(() => userTable.publicId, {
         onDelete: "restrict",
       }),
 

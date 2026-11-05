@@ -2,7 +2,6 @@ import {
   pgTable,
   bigserial,
   uuid,
-  bigint,
   varchar,
   text,
   timestamp,
@@ -33,13 +32,9 @@ export const noteTable = pgTable("notes", {
     .notNull()
     .unique(),
 
-  userId: bigint("user_id", {
-    mode: "bigint",
-  })
-    .notNull()
-    .references(() => userTable.internalId, {
-      onDelete: "restrict",
-    }),
+  userId: uuid("user_public_id")
+    .references(() => userTable.publicId)
+    .notNull(),
 
   title: varchar("title", {
     length: 255,
@@ -47,11 +42,12 @@ export const noteTable = pgTable("notes", {
 
   content: text("content").notNull(),
 
-  sourceDocumentId: bigint("source_document_id", {
-    mode: "bigint",
-  }).references(() => documentMetaTable.internalId, {
-    onDelete: "restrict",
-  }),
+  sourceDocumentId: uuid("document_public_id").references(
+    () => documentMetaTable.publicId,
+    {
+      onDelete: "restrict",
+    },
+  ),
 
   sourceText: text("source_text"),
 

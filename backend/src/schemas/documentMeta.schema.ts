@@ -27,8 +27,8 @@ export const documentMetaTable = pgTable("document_meta", {
     .notNull()
     .unique(),
 
-  userId: bigint("user_id", { mode: "bigint" })
-    .references(() => userTable.internalId)
+  userId: uuid("user_public_id")
+    .references(() => userTable.publicId)
     .notNull(),
 
   originalFileName: varchar("original_filename", { length: 255 }).notNull(),

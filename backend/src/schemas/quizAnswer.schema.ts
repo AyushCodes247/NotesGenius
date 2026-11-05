@@ -2,7 +2,6 @@ import {
   pgTable,
   bigserial,
   uuid,
-  bigint,
   boolean,
   timestamp,
   unique,
@@ -25,27 +24,21 @@ export const quizAnswerTable = pgTable(
       .notNull()
       .unique(),
 
-    attemptId: bigint("attempt_id", {
-      mode: "bigint",
-    })
+    attemptId: uuid("attempt_public_id")
       .notNull()
-      .references(() => quizAttemptTable.internalId, {
+      .references(() => quizAttemptTable.publicId, {
         onDelete: "cascade",
       }),
 
-    questionId: bigint("question_id", {
-      mode: "bigint",
-    })
+    questionId: uuid("question_public_id")
       .notNull()
-      .references(() => quizQuestionTable.internalId, {
+      .references(() => quizQuestionTable.publicId, {
         onDelete: "restrict",
       }),
 
-    questionOptionId: bigint("question_option_id", {
-      mode: "bigint",
-    })
+    questionOptionId: uuid("question_option_public_id")
       .notNull()
-      .references(() => quizOptionTable.internalId, {
+      .references(() => quizOptionTable.publicId, {
         onDelete: "restrict",
       }),
 

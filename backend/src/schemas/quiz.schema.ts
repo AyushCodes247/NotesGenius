@@ -2,7 +2,6 @@ import {
   pgTable,
   bigserial,
   uuid,
-  bigint,
   varchar,
   text,
   integer,
@@ -51,11 +50,9 @@ export const quizTable = pgTable(
       .notNull()
       .unique(),
 
-    userId: bigint("user_id", {
-      mode: "bigint",
-    })
+    userId: uuid("user_public_id")
       .notNull()
-      .references(() => userTable.internalId, {
+      .references(() => userTable.publicId, {
         onDelete: "restrict",
       }),
 
@@ -67,17 +64,19 @@ export const quizTable = pgTable(
 
     generationMode: quizGenerationModeEnum("generation_mode").notNull(),
 
-    sourceNoteId: bigint("source_note_id", {
-      mode: "bigint",
-    }).references(() => noteTable.internalId, {
-      onDelete: "restrict",
-    }),
+    sourceNoteId: uuid("source_note_public_id").references(
+      () => noteTable.publicId,
+      {
+        onDelete: "restrict",
+      },
+    ),
 
-    sourceDocumentId: bigint("source_document_id", {
-      mode: "bigint",
-    }).references(() => documentMetaTable.internalId, {
-      onDelete: "restrict",
-    }),
+    sourceDocumentId: uuid("source_document_public_id").references(
+      () => documentMetaTable.publicId,
+      {
+        onDelete: "restrict",
+      },
+    ),
 
     sourceTopic: varchar("source_topic", {
       length: 255,
