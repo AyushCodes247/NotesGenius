@@ -13,7 +13,7 @@ const SUPPORTED_TEXT_MIME_TYPES = new Set([
 
 export async function ingestDocument(
   filePath: string,
-  documentId: bigint,
+  documentId: string,
   mimeType: string,
 ): Promise<number> {
   try {

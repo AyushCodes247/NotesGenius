@@ -1,13 +1,41 @@
-import { sql } from "drizzle-orm";
+import { sql, eq } from "drizzle-orm";
 import db from "@/index.js";
-import { documentVectorTable } from "@schemas/documentVector.schema";
-import { embedText, generateAnswer } from "./embedding.pipe.js";
 
-export async function queryDocument(question: string) {
+import { documentMetaTable } from "@schemas/documentMeta.schema";
+import { documentVectorTable } from "@schemas/documentVector.schema";
+
+import { embedText } from "./embedding.pipe.js";
+import { AppError } from "@utils/general.util.js";
+
+export async function queryDocument(
+  documentPublicId: string,
+  question: string,
+) {
+  /**
+   * Resolve and verify the public document UUID.
+   */
+  const [document] = await db
+    .select({
+      publicId: documentMetaTable.publicId,
+    })
+    .from(documentMetaTable)
+    .where(eq(documentMetaTable.publicId, documentPublicId))
+    .limit(1);
+
+  if (!document) {
+    throw new AppError("Document not found.", 404);
+  }
+
+  /**
+   * Generate the embedding for the user's question.
+   */
   const questionEmbedding = await embedText(question);
 
   const vector = `[${questionEmbedding.join(",")}]`;
 
+  /**
+   * Retrieve the most relevant chunks from ONLY this document.
+   */
   const rows = await db
     .select({
       documentId: documentVectorTable.documentId,
@@ -23,6 +51,7 @@ export async function queryDocument(question: string) {
       `,
     })
     .from(documentVectorTable)
+    .where(eq(documentVectorTable.documentId, document.publicId))
     .orderBy(
       sql`
         ${documentVectorTable.embedding}::halfvec(3072)
@@ -32,24 +61,31 @@ export async function queryDocument(question: string) {
     )
     .limit(5);
 
+  /**
+   * No chunks were found for this document.
+   */
   if (rows.length === 0) {
     return {
-      answer: "No relevant documents found.",
+      context: "",
       sources: [],
       topSimilarity: "0.000",
     };
   }
 
+  /**
+   * Build factual context for the generation service.
+   *
+   * queryDocument() performs retrieval only.
+   */
   const context = rows.map((row) => row.chunkText).join("\n\n---\n\n");
 
-  const answer = await generateAnswer(context, question);
-
   return {
-    answer,
+    context,
 
     sources: rows.map((row) => ({
-      documentId: row.documentId,
+      documentPublicId: document.publicId,
       chunkIndex: row.chunkIndex,
+      similarity: Number(row.similarity).toFixed(3),
     })),
 
     topSimilarity: Number(rows[0]?.similarity ?? 0).toFixed(3),

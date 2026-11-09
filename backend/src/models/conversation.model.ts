@@ -3,15 +3,59 @@ import crypto from "node:crypto";
 
 export type ConversationStatus = "ACTIVE" | "ARCHIVED";
 
+export type MessageRole = "system" | "user" | "assistant" | "tool";
+
+export interface IConversationMessage {
+  messageId: string;
+  role: MessageRole;
+  content: string;
+  createdAt: Date;
+}
+
 export interface IConversation {
   conversationId: string;
   userPublicId: string;
   title: string;
   status: ConversationStatus;
+
   documentPublicIds: string[];
+
+  messages: IConversationMessage[];
+
   lastMessageAt?: Date;
   deletedAt?: Date;
 }
+
+const conversationMessageSchema = new Schema<IConversationMessage>(
+  {
+    messageId: {
+      type: String,
+      default: () => crypto.randomUUID(),
+      required: true,
+    },
+
+    role: {
+      type: String,
+      enum: ["system", "user", "assistant", "tool"],
+      required: true,
+    },
+
+    content: {
+      type: String,
+      required: true,
+      trim: true,
+    },
+
+    createdAt: {
+      type: Date,
+      default: Date.now,
+      required: true,
+    },
+  },
+  {
+    _id: false,
+  },
+);
 
 const conversationSchema = new Schema<IConversation>(
   {
@@ -43,6 +87,11 @@ const conversationSchema = new Schema<IConversation>(
 
     documentPublicIds: {
       type: [String],
+      default: [],
+    },
+
+    messages: {
+      type: [conversationMessageSchema],
       default: [],
     },
 
@@ -80,12 +129,16 @@ export type MemoryScope = "CONVERSATION" | "DOCUMENT";
 export interface IConversationMemory {
   userPublicId: string;
   scope: MemoryScope;
+
   conversationId?: string;
   documentPublicId?: string;
+
   summary: string;
   keyFacts: string[];
   topics: string[];
+
   lastConsolidatedMessageId?: string;
+
   revision: number;
 }
 

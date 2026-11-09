@@ -1,4 +1,6 @@
 import type { Request, Response, NextFunction } from "express";
+import { createHash } from "node:crypto";
+import { createReadStream } from "node:fs";
 
 type AsyncRequestHandler<T = Record<string, string>> = (
   req: Request<T>,
@@ -28,4 +30,25 @@ export class AppError extends Error {
 
     Error.captureStackTrace(this, this.constructor);
   }
+}
+
+export async function generateCheckSumSha256(
+  filePath: string,
+): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const hash = createHash("sha256");
+    const stream = createReadStream(filePath);
+
+    stream.on("data", (chunk) => {
+      hash.update(chunk);
+    });
+
+    stream.on("end", () => {
+      resolve(hash.digest("hex"));
+    });
+
+    stream.on("error", (error) => {
+      reject(error);
+    });
+  });
 }

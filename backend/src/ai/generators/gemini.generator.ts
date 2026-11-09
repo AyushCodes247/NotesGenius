@@ -23,11 +23,26 @@ const generateContent = async ({
 
     return generatedText.trim();
   } catch (error) {
-    if (error instanceof AppError) {
-      throw error;
+    console.error("Gemini generation error:", error);
+
+    if (
+      error &&
+      typeof error === "object" &&
+      "status" in error &&
+      error.status === 503
+    ) {
+      throw new AppError(
+        "Gemini is temporarily unavailable due to high demand. Please try again.",
+        503,
+        error instanceof Error ? error : undefined,
+      );
     }
 
-    throw new AppError("Failed to generate content using Gemini.", 502);
+    throw new AppError(
+      "Failed to generate content using Gemini.",
+      502,
+      error instanceof Error ? error : undefined,
+    );
   }
 };
 

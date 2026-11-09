@@ -46,7 +46,8 @@
       "@ai/prompts/*": ["./src/ai/prompts/*"],
       "@ai/services/*": ["./src/ai/services/*"],
       "@ai/generators/*" : ["./src/ai/generators/*"],
-      "@models/*" : ["./src/models/*"]
+      "@models/*" : ["./src/models/*"],
+      "@pipes/*" : ["./src/pipes/*"]
     }
   },
   "include": ["src/**/*.ts"],
