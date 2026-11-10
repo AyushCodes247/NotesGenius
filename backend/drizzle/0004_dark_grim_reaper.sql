@@ -1,0 +1,1 @@
+ALTER TABLE "note_shares" ADD COLUMN "pdf_url" text;

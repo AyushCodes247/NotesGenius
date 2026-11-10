@@ -7,7 +7,7 @@ import {
   generateNotePdfKey,
 } from "@utils/general.util.js";
 import { ingestDocument } from "@pipes/ingest.pipe.js";
-import { and, eq } from "drizzle-orm";
+import { and, eq, desc, isNull } from "drizzle-orm";
 import { unlink } from "node:fs/promises";
 import {
   ConversationMemoryModel,
@@ -19,6 +19,9 @@ import crypto from "node:crypto";
 import searchWeb from "@ai/generators/tavily.generator.js";
 import s3Service from "./s3.service.js";
 import { generateNotePdf } from "@utils/pdf.util.js";
+import notesCacheService from "./cache.service.js";
+import { noteShareTable } from "@schemas/notesShare.schema";
+import { userTable } from "@schemas/user.schema";
 
 interface UploadInput {
   userPublicId: string;
@@ -37,6 +40,20 @@ interface DiscussInput {
 interface CreationInput {
   userPublicId: string;
   title: string;
+}
+
+interface UpdateInput {
+  userPublicId: string;
+  notesPublicId: string;
+  title?: string;
+  visibility?: "private" | "public";
+  topic?: string | null;
+}
+
+interface ShareInput {
+  userPublicId: string;
+  notesPublicId: string;
+  recipientUserHandle: string;
 }
 
 class NotesService {
@@ -275,6 +292,8 @@ class NotesService {
             eq(noteTable.userId, userPublicId),
           ),
         );
+
+      await notesCacheService.invalidateNote(userPublicId, note.publicId);
     }
 
     conversation.messages.push({
@@ -429,6 +448,8 @@ class NotesService {
         );
       }
 
+      await notesCacheService.invalidateNote(userPublicId, note.publicId);
+
       return {
         public_id: updatedNote.publicId,
         title: updatedNote.title,
@@ -466,6 +487,441 @@ class NotesService {
         }
       }
     }
+  }
+
+  async getAll({ userPublicId }: { userPublicId: string }) {
+    const cachedNotes = await notesCacheService.get(userPublicId, "all");
+
+    if (cachedNotes) {
+      return cachedNotes;
+    }
+
+    const notes = await db
+      .select({
+        publicId: noteTable.publicId,
+        title: noteTable.title,
+        content: noteTable.content,
+        sourceText: noteTable.sourceText,
+        topic: noteTable.topic,
+        visibility: noteTable.visibility,
+        pdfUrl: noteTable.pdfUrl,
+        createdAt: noteTable.createdAt,
+        updatedAt: noteTable.updatedAt,
+      })
+      .from(noteTable)
+      .where(
+        and(eq(noteTable.userId, userPublicId), isNull(noteTable.deletedAt)),
+      )
+      .orderBy(desc(noteTable.updatedAt));
+
+    await notesCacheService.set(userPublicId, "all", notes);
+
+    return notes;
+  }
+
+  async getOne({
+    userPublicId,
+    notesPublicId,
+  }: {
+    userPublicId: string;
+    notesPublicId: string;
+  }) {
+    const cachedNote = await notesCacheService.get(
+      userPublicId,
+      "single",
+      notesPublicId,
+    );
+
+    if (cachedNote && cachedNote.publicId === notesPublicId) {
+      return cachedNote;
+    }
+
+    if (cachedNote) {
+      await notesCacheService.invalidate(userPublicId, "single", notesPublicId);
+    }
+
+    const [note] = await db
+      .select({
+        publicId: noteTable.publicId,
+        title: noteTable.title,
+        content: noteTable.content,
+        sourceText: noteTable.sourceText,
+        topic: noteTable.topic,
+        visibility: noteTable.visibility,
+        pdfUrl: noteTable.pdfUrl,
+        createdAt: noteTable.createdAt,
+        updatedAt: noteTable.updatedAt,
+      })
+      .from(noteTable)
+      .where(
+        and(
+          eq(noteTable.publicId, notesPublicId),
+          eq(noteTable.userId, userPublicId),
+          isNull(noteTable.deletedAt),
+        ),
+      )
+      .limit(1);
+
+    if (!note) {
+      throw new AppError("Note not found.", 404);
+    }
+
+    await notesCacheService.set(userPublicId, "single", note, notesPublicId);
+
+    return note;
+  }
+
+  async update({
+    userPublicId,
+    notesPublicId,
+    title,
+    visibility,
+    topic,
+  }: UpdateInput) {
+    const values: {
+      title?: string;
+      visibility?: "private" | "public";
+      topic?: string | null;
+      updatedAt: Date;
+    } = {
+      updatedAt: new Date(),
+    };
+
+    if (title !== undefined) {
+      const normalizedTitle = title.trim();
+
+      if (!normalizedTitle) {
+        throw new AppError("Title cannot be empty.", 400);
+      }
+
+      values.title = normalizedTitle;
+    }
+
+    if (visibility !== undefined) {
+      values.visibility = visibility;
+    }
+
+    if (topic !== undefined) {
+      values.topic = topic?.trim() || null;
+    }
+
+    const [updatedNote] = await db
+      .update(noteTable)
+      .set(values)
+      .where(
+        and(
+          eq(noteTable.publicId, notesPublicId),
+          eq(noteTable.userId, userPublicId),
+          isNull(noteTable.deletedAt),
+        ),
+      )
+      .returning({
+        publicId: noteTable.publicId,
+        title: noteTable.title,
+        content: noteTable.content,
+        sourceText: noteTable.sourceText,
+        topic: noteTable.topic,
+        visibility: noteTable.visibility,
+        pdfUrl: noteTable.pdfUrl,
+        createdAt: noteTable.createdAt,
+        updatedAt: noteTable.updatedAt,
+      });
+
+    if (!updatedNote) {
+      throw new AppError("Note not found.", 404);
+    }
+
+    await notesCacheService.invalidateNote(userPublicId, notesPublicId);
+
+    return updatedNote;
+  }
+  async delete({
+    userPublicId,
+    notesPublicId,
+  }: {
+    userPublicId: string;
+    notesPublicId: string;
+  }) {
+    const [note] = await db
+      .select({
+        publicId: noteTable.publicId,
+        pdfStorageKey: noteTable.pdfStorageKey,
+      })
+      .from(noteTable)
+      .where(
+        and(
+          eq(noteTable.publicId, notesPublicId),
+          eq(noteTable.userId, userPublicId),
+          isNull(noteTable.deletedAt),
+        ),
+      )
+      .limit(1);
+
+    if (!note) {
+      throw new AppError("Note not found.", 404);
+    }
+
+    const recipients = await db
+      .select({
+        recipientUserId: noteShareTable.recipientUserId,
+      })
+      .from(noteShareTable)
+      .where(
+        and(
+          eq(noteShareTable.noteId, notesPublicId),
+          isNull(noteShareTable.revokedAt),
+        ),
+      );
+
+    if (note.pdfStorageKey) {
+      await s3Service.deleteFile(note.pdfStorageKey);
+    }
+
+    const now = new Date();
+
+    const [deletedNote] = await db
+      .update(noteTable)
+      .set({
+        pdfUrl: null,
+        pdfStorageKey: null,
+        deletedAt: now,
+        updatedAt: now,
+      })
+      .where(
+        and(
+          eq(noteTable.publicId, notesPublicId),
+          eq(noteTable.userId, userPublicId),
+          isNull(noteTable.deletedAt),
+        ),
+      )
+      .returning({
+        publicId: noteTable.publicId,
+      });
+
+    if (!deletedNote) {
+      throw new AppError("Failed to delete note.", 500);
+    }
+
+    // Revoke all active shares because the note no longer exists logically.
+    await db
+      .update(noteShareTable)
+      .set({
+        revokedAt: now,
+      })
+      .where(
+        and(
+          eq(noteShareTable.noteId, notesPublicId),
+          isNull(noteShareTable.revokedAt),
+        ),
+      );
+
+    // Invalidate owner's caches.
+    await notesCacheService.invalidateNote(userPublicId, notesPublicId);
+
+    // Invalidate every recipient's cached copy.
+    await Promise.all(
+      recipients.map(({ recipientUserId }) =>
+        notesCacheService.invalidateNote(recipientUserId, notesPublicId),
+      ),
+    );
+
+    return deletedNote;
+  }
+
+  async share({
+    userPublicId,
+    notesPublicId,
+    recipientUserHandle,
+  }: ShareInput) {
+    const [note] = await db
+      .select({
+        publicId: noteTable.publicId,
+        pdfUrl: noteTable.pdfUrl,
+      })
+      .from(noteTable)
+      .where(
+        and(
+          eq(noteTable.publicId, notesPublicId),
+          eq(noteTable.userId, userPublicId),
+          isNull(noteTable.deletedAt),
+        ),
+      )
+      .limit(1);
+
+    if (!note) {
+      throw new AppError("Note not found.", 404);
+    }
+
+    const [recipient] = await db
+      .select({
+        publicId: userTable.publicId,
+        userHandle: userTable.userHandle,
+      })
+      .from(userTable)
+      .where(eq(userTable.userHandle, recipientUserHandle))
+      .limit(1);
+
+    if (!recipient) {
+      throw new AppError("Recipient user not found.", 404);
+    }
+
+    if (recipient.publicId === userPublicId) {
+      throw new AppError("You cannot share a note with yourself.", 400);
+    }
+
+    const [existingShare] = await db
+      .select({
+        publicId: noteShareTable.publicId,
+        revokedAt: noteShareTable.revokedAt,
+      })
+      .from(noteShareTable)
+      .where(
+        and(
+          eq(noteShareTable.noteId, notesPublicId),
+          eq(noteShareTable.recipientUserId, recipient.publicId),
+        ),
+      )
+      .limit(1);
+
+    if (existingShare) {
+      if (!existingShare.revokedAt) {
+        throw new AppError("Note is already shared with this user.", 409);
+      }
+
+      const [reshared] = await db
+        .update(noteShareTable)
+        .set({
+          revokedAt: null,
+          pdfUrl: note.pdfUrl,
+        })
+        .where(eq(noteShareTable.publicId, existingShare.publicId))
+        .returning({
+          publicId: noteShareTable.publicId,
+          noteId: noteShareTable.noteId,
+          pdfUrl: noteShareTable.pdfUrl,
+          recipientUserId: noteShareTable.recipientUserId,
+          createdAt: noteShareTable.createdAt,
+          revokedAt: noteShareTable.revokedAt,
+        });
+
+      if (!reshared) {
+        throw new AppError("Failed to restore note share.", 500);
+      }
+
+      return reshared;
+    }
+
+    const [share] = await db
+      .insert(noteShareTable)
+      .values({
+        noteId: notesPublicId,
+        pdfUrl: note.pdfUrl,
+        recipientUserId: recipient.publicId,
+      })
+      .returning({
+        publicId: noteShareTable.publicId,
+        noteId: noteShareTable.noteId,
+        pdfUrl: noteShareTable.pdfUrl,
+        recipientUserId: noteShareTable.recipientUserId,
+        createdAt: noteShareTable.createdAt,
+        revokedAt: noteShareTable.revokedAt,
+      });
+
+    if (!share) {
+      throw new AppError("Failed to share note.", 500);
+    }
+
+    return share;
+  }
+
+  async getShared({ userPublicId }: { userPublicId: string }) {
+    const sharedNotes = await db
+      .select({
+        publicId: noteTable.publicId,
+        title: noteTable.title,
+        content: noteTable.content,
+        sourceText: noteTable.sourceText,
+        topic: noteTable.topic,
+        visibility: noteTable.visibility,
+        pdfUrl: noteTable.pdfUrl,
+        createdAt: noteTable.createdAt,
+        updatedAt: noteTable.updatedAt,
+
+        sharePublicId: noteShareTable.publicId,
+        sharedAt: noteShareTable.createdAt,
+      })
+      .from(noteShareTable)
+      .innerJoin(noteTable, eq(noteShareTable.noteId, noteTable.publicId))
+      .where(
+        and(
+          eq(noteShareTable.recipientUserId, userPublicId),
+          isNull(noteShareTable.revokedAt),
+          isNull(noteTable.deletedAt),
+        ),
+      )
+      .orderBy(desc(noteShareTable.createdAt));
+
+    return sharedNotes;
+  }
+
+  async revokeShare({
+    userPublicId,
+    notesPublicId,
+    sharePublicId,
+  }: {
+    userPublicId: string;
+    notesPublicId: string;
+    sharePublicId: string;
+  }) {
+    // Verify that the requester owns the note
+    const [note] = await db
+      .select({
+        publicId: noteTable.publicId,
+      })
+      .from(noteTable)
+      .where(
+        and(
+          eq(noteTable.publicId, notesPublicId),
+          eq(noteTable.userId, userPublicId),
+          isNull(noteTable.deletedAt),
+        ),
+      )
+      .limit(1);
+
+    if (!note) {
+      throw new AppError("Note not found.", 404);
+    }
+
+    const [revokedShare] = await db
+      .update(noteShareTable)
+      .set({
+        revokedAt: new Date(),
+      })
+      .where(
+        and(
+          eq(noteShareTable.publicId, sharePublicId),
+          eq(noteShareTable.noteId, notesPublicId),
+          isNull(noteShareTable.revokedAt),
+        ),
+      )
+      .returning({
+        publicId: noteShareTable.publicId,
+        noteId: noteShareTable.noteId,
+        recipientUserId: noteShareTable.recipientUserId,
+        revokedAt: noteShareTable.revokedAt,
+      });
+
+    if (!revokedShare) {
+      throw new AppError("Active note share not found.", 404);
+    }
+
+    // Invalidate the recipient's cached note
+    await notesCacheService.invalidateNote(
+      revokedShare.recipientUserId,
+      notesPublicId,
+    );
+
+    return revokedShare;
   }
 }
 

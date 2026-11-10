@@ -4,6 +4,7 @@ import {
   uuid,
   timestamp,
   check,
+  text,
 } from "drizzle-orm/pg-core";
 import { sql } from "drizzle-orm";
 import { noteTable } from "./note.schema.js";
@@ -26,6 +27,8 @@ export const noteShareTable = pgTable(
       .references(() => noteTable.publicId, {
         onDelete: "cascade",
       }),
+
+    pdfUrl: text("pdf_url"),
 
     recipientUserId: uuid("recipient_user_public_id")
       .notNull()
