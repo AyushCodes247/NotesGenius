@@ -1,7 +1,11 @@
 import db from "@/index.js";
 import { documentMetaTable } from "@schemas/documentMeta.schema";
 import { noteTable } from "@schemas/note.schema";
-import { AppError, generateCheckSumSha256 } from "@utils/general.util.js";
+import {
+  AppError,
+  generateCheckSumSha256,
+  generateNotePdfKey,
+} from "@utils/general.util.js";
 import { ingestDocument } from "@pipes/ingest.pipe.js";
 import { and, eq } from "drizzle-orm";
 import { unlink } from "node:fs/promises";
@@ -13,6 +17,8 @@ import geminiService from "@ai/services/gemini.service.js";
 import { queryDocument } from "@/pipes/docQuery.pipe.js";
 import crypto from "node:crypto";
 import searchWeb from "@ai/generators/tavily.generator.js";
+import s3Service from "./s3.service.js";
+import { generateNotePdf } from "@utils/pdf.util.js";
 
 interface UploadInput {
   userPublicId: string;
@@ -146,15 +152,6 @@ class NotesService {
       }).lean();
     }
 
-    /*
-     * Context retrieval
-     *
-     * Document available:
-     *     RAG → document context
-     *
-     * No document:
-     *     Tavily → web context
-     */
     let documentContext = "";
 
     let webContext = "";
@@ -250,6 +247,36 @@ class NotesService {
       context: context || "",
     });
 
+    let pdfUrl: string | undefined;
+    let pdfStorageKey: string | undefined;
+
+    if (normalizedCommand === "@create") {
+      const pdfBuffer = await generateNotePdf({
+        title: note.title,
+        content: answer,
+      });
+
+      pdfStorageKey = generateNotePdfKey(note.publicId);
+
+      await s3Service.uploadFile({
+        buffer: pdfBuffer,
+        key: pdfStorageKey,
+        contentType: "application/pdf",
+      });
+
+      pdfUrl = await s3Service.getSignedUrlForFile(pdfStorageKey);
+
+      await db
+        .update(noteTable)
+        .set({ content: answer, pdfStorageKey, pdfUrl, updatedAt: new Date() })
+        .where(
+          and(
+            eq(noteTable.publicId, notesPublicId),
+            eq(noteTable.userId, userPublicId),
+          ),
+        );
+    }
+
     conversation.messages.push({
       messageId: crypto.randomUUID(),
       role: "user",
@@ -277,6 +304,14 @@ class NotesService {
       },
 
       response: answer,
+
+      pdf:
+        normalizedCommand === "@create"
+          ? {
+              storageKey: pdfStorageKey,
+              url: pdfUrl,
+            }
+          : { storageKey: "", url: "" },
 
       sources: note.sourceDocumentId
         ? {

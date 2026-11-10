@@ -51,6 +51,13 @@ const envSchema = z.object({
 
   // Web Context
   TAVILY_KEY: z.string().min(1),
+
+  // Storage Blob Secret Key
+  AWS_S3_KEY: z.string().min(1),
+  AWS_S3_SECRET_KEY: z.string().min(1),
+  AWS_S3_BUCKET: z.string().min(1),
+  AWS_S3_REGION: z.string().min(1),
+  AWS_S3_ARN: z.string().min(1),
 });
 
 const parsedEnv = envSchema.safeParse(process.env);

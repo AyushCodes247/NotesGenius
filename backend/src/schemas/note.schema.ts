@@ -59,6 +59,10 @@ export const noteTable = pgTable("notes", {
 
   visibility: noteVisibilityEnum("visibility").notNull(),
 
+  pdfStorageKey: text("pdf_storage_key"),
+
+  pdfUrl: text("pdf_url"),
+
   createdAt: timestamp("created_at", {
     mode: "date",
     withTimezone: true,

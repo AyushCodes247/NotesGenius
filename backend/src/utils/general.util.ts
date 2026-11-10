@@ -52,3 +52,7 @@ export async function generateCheckSumSha256(
     });
   });
 }
+
+export const generateNotePdfKey = (notePublicId: string): string => {
+  return `notes/${notePublicId}/note.pdf`;
+};
