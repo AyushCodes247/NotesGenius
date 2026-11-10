@@ -12,6 +12,7 @@ import {
 import geminiService from "@ai/services/gemini.service.js";
 import { queryDocument } from "@/pipes/docQuery.pipe.js";
 import crypto from "node:crypto";
+import searchWeb from "@ai/generators/tavily.generator.js";
 
 interface UploadInput {
   userPublicId: string;
@@ -100,6 +101,7 @@ class NotesService {
     }
 
     let conversation;
+
     if (conversationId) {
       conversation = await ConversationModel.findOne({
         conversationId,
@@ -144,20 +146,41 @@ class NotesService {
       }).lean();
     }
 
+    /*
+     * Context retrieval
+     *
+     * Document available:
+     *     RAG → document context
+     *
+     * No document:
+     *     Tavily → web context
+     */
     let documentContext = "";
 
-    console.log("DISCUSS DOCUMENT DEBUG", {
-      notesPublicId,
-      sourceDocumentId: note.sourceDocumentId,
-      conversationId,
-    });
+    let webContext = "";
+
+    let webSources: {
+      title: string;
+      url: string;
+      favicon: string | undefined;
+    }[] = [];
 
     if (note.sourceDocumentId) {
-      const ragResult = await queryDocument(note.sourceDocumentId, normalizedQuery);
+      const ragResult = await queryDocument(
+        note.sourceDocumentId,
+        normalizedQuery,
+      );
+
       documentContext = ragResult.context;
+    } else {
+      const webResult = await searchWeb(normalizedQuery);
+
+      webContext = webResult.context;
+      webSources = webResult.sources;
     }
 
     const memoryParts: string[] = [];
+
     if (documentMemory) {
       if (documentMemory.summary) {
         memoryParts.push(`Document memory:\n${documentMemory.summary}`);
@@ -207,6 +230,8 @@ class NotesService {
         ? `Relevant document information:\n${documentContext}`
         : "",
 
+      webContext ? `Relevant web information:\n${webContext}` : "",
+
       note.sourceText ? `Note source text:\n${note.sourceText}` : "",
 
       note.topic ? `Note topic:\n${note.topic}` : "",
@@ -255,9 +280,13 @@ class NotesService {
 
       sources: note.sourceDocumentId
         ? {
+            type: "document",
             documentPublicId: note.sourceDocumentId,
           }
-        : null,
+        : {
+            type: "web",
+            results: webSources,
+          },
 
       messageCount: conversation.messages.length,
     };

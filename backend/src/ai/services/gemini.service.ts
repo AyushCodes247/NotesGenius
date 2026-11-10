@@ -22,7 +22,7 @@ const PROMPT_BUILDERS: Record<Command, (input: PromptInput) => string> = {
   "@summarize": summarizePrompt,
   "@create": createPrompt,
   "@bulletpoints": bulletPrompt,
-  "@short-summary": shortPrompt,
+  "@short-summarize": shortPrompt,
   "@explain": explainPrompt,
 };
 

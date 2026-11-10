@@ -48,6 +48,9 @@ const envSchema = z.object({
 
   // File uploads
   UPLOAD_PATHS: z.string().min(1),
+
+  // Web Context
+  TAVILY_KEY: z.string().min(1),
 });
 
 const parsedEnv = envSchema.safeParse(process.env);

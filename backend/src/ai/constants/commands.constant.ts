@@ -2,7 +2,7 @@ export const COMMANDS = [
   "@summarize",
   "@create",
   "@bulletpoints",
-  "@short-summary",
+  "@short-summarize",
   "@explain",
 ] as const;
 
