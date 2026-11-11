@@ -59,10 +59,11 @@ export const quizAnswerTable = pgTable(
       .notNull(),
   },
   (table) => [
-    unique("quiz_answers_attempt_option_unique").on(
+    unique("quiz_answers_attempt_question_unique").on(
       table.attemptId,
-      table.questionOptionId,
+      table.questionId,
     ),
+
     index("quiz_answers_attempt_question_idx").on(
       table.attemptId,
       table.questionId,

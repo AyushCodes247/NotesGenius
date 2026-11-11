@@ -1,0 +1,2 @@
+ALTER TABLE "quiz_questions" ADD COLUMN "correct_option_number" integer NOT NULL;--> statement-breakpoint
+ALTER TABLE "quiz_questions" ADD CONSTRAINT "quiz_questions_correct_option_number_check" CHECK ("quiz_questions"."correct_option_number" BETWEEN 1 AND 4);

@@ -40,6 +40,8 @@ export const quizQuestionTable = pgTable(
 
     questionText: text("question_text").notNull(),
 
+    correctOptionNumber: integer("correct_option_number").notNull(),
+
     explanation: text("explanation"),
 
     hint: text("hint"),
@@ -56,6 +58,12 @@ export const quizQuestionTable = pgTable(
       "quiz_questions_question_number_check",
       sql`${table.questionNumber} >= 1`,
     ),
+
+    check(
+      "quiz_questions_correct_option_number_check",
+      sql`${table.correctOptionNumber} BETWEEN 1 AND 4`,
+    ),
+
     unique("quiz_questions_quiz_question_number_unique").on(
       table.quizId,
       table.questionNumber,

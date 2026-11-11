@@ -36,6 +36,20 @@
       "when": 1794333073145,
       "tag": "0004_dark_grim_reaper",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1794390932781,
+      "tag": "0005_wide_living_tribunal",
+      "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1794391078579,
+      "tag": "0006_known_catseye",
+      "breakpoints": true
     }
   ]
 }

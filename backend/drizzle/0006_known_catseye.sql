@@ -1,0 +1,2 @@
+ALTER TABLE "quiz_answers" DROP CONSTRAINT "quiz_answers_attempt_option_unique";--> statement-breakpoint
+ALTER TABLE "quiz_answers" ADD CONSTRAINT "quiz_answers_attempt_question_unique" UNIQUE("attempt_public_id","question_public_id");

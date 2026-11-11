@@ -45,9 +45,10 @@
       "@ai/constants/*": ["./src/ai/constants/*"],
       "@ai/prompts/*": ["./src/ai/prompts/*"],
       "@ai/services/*": ["./src/ai/services/*"],
-      "@ai/generators/*" : ["./src/ai/generators/*"],
-      "@models/*" : ["./src/models/*"],
-      "@pipes/*" : ["./src/pipes/*"]
+      "@ai/generators/*": ["./src/ai/generators/*"],
+      "@models/*": ["./src/models/*"],
+      "@pipes/*": ["./src/pipes/*"],
+      "@ai/schemas/*": ["./src/ai/schemas/*"]
     }
   },
   "include": ["src/**/*.ts"],
