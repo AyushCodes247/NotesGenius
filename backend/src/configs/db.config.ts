@@ -1,4 +1,5 @@
 import mongoose from "mongoose";
+import logger from "@utils/logger.util.js"
 
 const connectDB = async (uri: string) => {
   try {
@@ -8,9 +9,9 @@ const connectDB = async (uri: string) => {
       heartbeatFrequencyMS: 10_000,
     });
 
-    console.info("DB connected successfully.");
+    logger.info("DB connected successfully.");
   } catch (error) {
-    console.error(`ERROR CONNECTING TO DATABASE: ${error}`);
+    logger.error(`ERROR CONNECTING TO DATABASE: ${error}`);
     process.exit(1);
   }
 };

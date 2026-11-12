@@ -22,6 +22,7 @@ import { generateNotePdf } from "@utils/pdf.util.js";
 import notesCacheService from "./cache.service.js";
 import { noteShareTable } from "@schemas/notesShare.schema";
 import { userTable } from "@schemas/user.schema";
+import logger from "@/utils/logger.util.js";
 
 interface UploadInput {
   userPublicId: string;
@@ -469,7 +470,13 @@ class NotesService {
         })
         .where(eq(documentMetaTable.publicId, document.publicId));
 
-      console.error(`RAG ingestion failed for ${document.publicId}:`, error);
+      logger.error(
+        {
+          err: error instanceof Error ? error : new Error(String(error)),
+          documentPublicId: document.publicId,
+        },
+        "RAG ingestion failed.",
+      );
 
       throw new AppError(
         "Failed to process uploaded document.",
@@ -483,7 +490,13 @@ class NotesService {
         const fileError = error as NodeJS.ErrnoException;
 
         if (fileError.code !== "ENOENT") {
-          console.error("Failed to delete temporary uploaded file:", error);
+          logger.error(
+            {
+              err: error instanceof Error ? error : new Error(String(error)),
+              filePath: file.path,
+            },
+            "Failed to delete temporary uploaded file.",
+          );
         }
       }
     }

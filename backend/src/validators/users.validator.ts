@@ -83,15 +83,3 @@ export const handleSchema = z.object({
     })
     .strict(),
 });
-
-export const shareQuizSchema = z.object({
-  userHandle: z
-    .string()
-    .trim()
-    .min(3, "User handle must be at least 3 characters.")
-    .max(30, "User handle must not exceed 30 characters.")
-    .regex(
-      /^[a-zA-Z0-9_]+$/,
-      "User handle can only contain letters, numbers, and underscores.",
-    ),
-});

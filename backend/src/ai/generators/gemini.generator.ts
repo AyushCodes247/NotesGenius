@@ -1,6 +1,7 @@
 import { AppError } from "@utils/general.util.js";
 import gemini from "@ai/providers/gemini.client.js";
 import env from "@configs/env.config.js";
+import logger from "@utils/logger.util.js";
 
 interface GeminiGenerationInput {
   prompt: string;
@@ -23,7 +24,12 @@ const generateContent = async ({
 
     return generatedText.trim();
   } catch (error) {
-    console.error("Gemini generation error:", error);
+    logger.error(
+      {
+        err: error instanceof Error ? error : new Error(String(error)),
+      },
+      "Gemini generation error.",
+    );
 
     if (
       error &&

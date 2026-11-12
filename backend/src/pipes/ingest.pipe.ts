@@ -2,6 +2,7 @@ import { documentVectorTable } from "@schemas/documentVector.schema";
 import db from "@/index.js";
 import { embedText } from "./embedding.pipe.js";
 import { extractedPdfText } from "./pdf.pipe.js";
+import logger from "@/utils/logger.util.js";
 
 const SUPPORTED_TEXT_MIME_TYPES = new Set([
   "application/pdf",
@@ -58,8 +59,13 @@ export async function ingestDocument(
 
     return processedChunks;
   } catch (error) {
-    console.error("Error while ingesting document:", error);
+    logger.error(
+      {
+        err: error instanceof Error ? error : new Error(String(error)),
+      },
+      "Error while ingesting document.",
+    );
 
-    throw new Error("Error in document ingestion.");
+    throw new Error("Error in document ingestion.", { cause: error });
   }
 }

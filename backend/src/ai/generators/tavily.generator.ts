@@ -1,6 +1,7 @@
 import { tavily } from "@tavily/core";
 import { AppError } from "@utils/general.util.js";
 import env from "@configs/env.config.js";
+import logger from "@utils/logger.util.js";
 
 const client = tavily({
   apiKey: env.TAVILY_KEY,
@@ -55,7 +56,12 @@ ${result.content}`,
       })),
     };
   } catch (error) {
-    console.error("Tavily search error:", error);
+    logger.error(
+      {
+        err: error instanceof Error ? error : new Error(String(error)),
+      },
+      "Tavily search error.",
+    );
 
     throw new AppError(
       "Failed to retrieve web context.",

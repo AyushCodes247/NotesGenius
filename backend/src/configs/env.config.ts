@@ -1,3 +1,4 @@
+import logger from "@/utils/logger.util.js";
 import dotenv from "dotenv";
 import { z } from "zod";
 
@@ -58,14 +59,42 @@ const envSchema = z.object({
   AWS_S3_BUCKET: z.string().min(1),
   AWS_S3_REGION: z.string().min(1),
   AWS_S3_ARN: z.string().min(1),
+
+  // Rate Limiting
+  RATE_LIMIT_APP_WINDOW_SECONDS: z.coerce.number().int().positive(),
+  RATE_LIMIT_APP_MAX_REQUESTS: z.coerce.number().int().positive(),
+
+  RATE_LIMIT_AUTH_WINDOW_SECONDS: z.coerce.number().int().positive(),
+  RATE_LIMIT_AUTH_MAX_REQUESTS: z.coerce.number().int().positive(),
+
+  RATE_LIMIT_UPLOAD_WINDOW_SECONDS: z.coerce.number().int().positive(),
+  RATE_LIMIT_UPLOAD_MAX_REQUESTS: z.coerce.number().int().positive(),
+
+  RATE_LIMIT_AI_WINDOW_SECONDS: z.coerce.number().int().positive(),
+  RATE_LIMIT_AI_MAX_REQUESTS: z.coerce.number().int().positive(),
+
+  RATE_LIMIT_CONVERSATION_WINDOW_SECONDS: z.coerce.number().int().positive(),
+  RATE_LIMIT_CONVERSATION_MAX_REQUESTS: z.coerce.number().int().positive(),
+
+  RATE_LIMIT_RETRIEVAL_WINDOW_SECONDS: z.coerce.number().int().positive(),
+  RATE_LIMIT_RETRIEVAL_MAX_REQUESTS: z.coerce.number().int().positive(),
+
+  RATE_LIMIT_ANSWER_WINDOW_SECONDS: z.coerce.number().int().positive(),
+  RATE_LIMIT_ANSWER_MAX_REQUESTS: z.coerce.number().int().positive(),
+
+  RATE_LIMIT_SHARING_WINDOW_SECONDS: z.coerce.number().int().positive(),
+  RATE_LIMIT_SHARING_MAX_REQUESTS: z.coerce.number().int().positive(),
+
+  RATE_LIMIT_PROFILE_WINDOW_SECONDS: z.coerce.number().int().positive(),
+  RATE_LIMIT_PROFILE_MAX_REQUESTS: z.coerce.number().int().positive(),
 });
 
 const parsedEnv = envSchema.safeParse(process.env);
 
 if (!parsedEnv.success) {
-  console.error("Invalid environment variables:");
+  logger.error("Invalid environment variables:");
 
-  console.error(z.treeifyError(parsedEnv.error));
+  logger.error(z.treeifyError(parsedEnv.error));
 
   process.exit(1);
 }

@@ -5,6 +5,7 @@ import {
   generatedQuizSchema,
   type GeneratedQuiz,
 } from "@ai/schemas/quizGeneration.schema.js";
+import logger from "@utils/logger.util.js";
 
 interface QuizGenerationInput {
   prompt: string;
@@ -87,7 +88,12 @@ const generateQuizContent = async ({
     try {
       parsedResponse = JSON.parse(generatedText);
     } catch (error) {
-      console.error("Gemini quiz JSON parse error:", error);
+      logger.error(
+        {
+          err: error instanceof Error ? error : new Error(String(error)),
+        },
+        "Gemini quiz JSON parse error.",
+      );
 
       throw new AppError(
         "Gemini returned an invalid quiz response.",
@@ -99,9 +105,11 @@ const generateQuizContent = async ({
     const validationResult = generatedQuizSchema.safeParse(parsedResponse);
 
     if (!validationResult.success) {
-      console.error(
-        "Gemini quiz validation error:",
-        validationResult.error.flatten(),
+      logger.error(
+        {
+          validationError: validationResult.error.flatten(),
+        },
+        "Gemini quiz validation error.",
       );
 
       throw new AppError("Gemini returned an invalid quiz structure.", 502);
@@ -109,7 +117,12 @@ const generateQuizContent = async ({
 
     return validationResult.data;
   } catch (error) {
-    console.error("Gemini quiz generation error:", error);
+    logger.error(
+      {
+        err: error instanceof Error ? error : new Error(String(error)),
+      },
+      "Gemini quiz generation error.",
+    );
 
     if (error instanceof AppError) {
       throw error;

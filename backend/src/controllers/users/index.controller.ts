@@ -23,9 +23,14 @@ const setRefreshCookie = (res: Response, refreshToken: string): void => {
 };
 
 const clearRefreshCookie = (res: Response): void => {
-  const { maxAge, ...cookieOptions } = getRefreshCookieOptions();
+  const isProduction = env.NODE_ENV === "production";
 
-  res.clearCookie(REFRESH_COOKIE, cookieOptions);
+  res.clearCookie(REFRESH_COOKIE, {
+    httpOnly: true,
+    secure: isProduction,
+    sameSite: (isProduction ? "none" : "lax") as "none" | "lax",
+    path: "/",
+  });
 };
 
 const getAuthenticatedUser = (req: Request) => {

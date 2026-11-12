@@ -1,3 +1,4 @@
+import logger from "@/utils/logger.util.js";
 import { PDFParse } from "pdf-parse";
 
 function chunkText(
@@ -34,9 +35,14 @@ export async function extractedPdfText(filePath: string): Promise<string[]> {
 
     return chunkText(text);
   } catch (error) {
-    console.error("Error while parsing PDF:", error);
+    logger.error(
+      {
+        err: error instanceof Error ? error : new Error(String(error)),
+      },
+      "Error while parsing PDF.",
+    );
 
-    throw new Error("Failed to process PDF.");
+    throw new Error("Failed to process PDF.", { cause: error });
   } finally {
     await parser.destroy();
   }

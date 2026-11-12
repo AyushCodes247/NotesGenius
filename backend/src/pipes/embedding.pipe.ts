@@ -1,5 +1,6 @@
 import env from "@configs/env.config.js";
 import { AppError } from "@utils/general.util.js";
+import logger from "@utils/logger.util.js";
 
 const GEMINI_KEY = env.GEMINI_API_KEY;
 const GEMINI_BASE_URL = env.GEMINI_BASE_URL;
@@ -45,7 +46,12 @@ export async function embedText(text?: string): Promise<number[]> {
 
     return data.embedding.values;
   } catch (error) {
-    console.error("Error in embedding:", error);
+    logger.error(
+      {
+        err: error instanceof Error ? error : new Error(String(error)),
+      },
+      "Error in embedding.",
+    );
 
     if (error instanceof AppError) {
       throw error;
@@ -140,7 +146,12 @@ ANSWER:
 
     return answer;
   } catch (error) {
-    console.error("Error generating answer:", error);
+    logger.error(
+      {
+        err: error instanceof Error ? error : new Error(String(error)),
+      },
+      "Error generating answer.",
+    );
 
     if (error instanceof AppError) {
       throw error;

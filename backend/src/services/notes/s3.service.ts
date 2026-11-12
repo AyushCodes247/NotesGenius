@@ -1,3 +1,4 @@
+import logger from "@/utils/logger.util.js";
 import {
   DeleteObjectCommand,
   GetObjectCommand,
@@ -45,7 +46,13 @@ const uploadFile = async ({
       key,
     };
   } catch (error) {
-    console.error("S3 upload error:", error);
+    logger.error(
+      {
+        err: error instanceof Error ? error : new Error(String(error)),
+        key,
+      },
+      "S3 upload error.",
+    );
 
     throw new AppError(
       "Failed to upload file to storage.",
@@ -64,7 +71,13 @@ const getSignedUrlForFile = async (key: string): Promise<string> => {
 
     return await getSignedUrl(s3Client, command);
   } catch (error) {
-    console.error("S3 signed URL error:", error);
+    logger.error(
+      {
+        err: error instanceof Error ? error : new Error(String(error)),
+        key,
+      },
+      "S3 signed URL error.",
+    );
 
     throw new AppError(
       "Failed to generate file download URL.",
@@ -83,7 +96,13 @@ const deleteFile = async (key: string): Promise<void> => {
 
     await s3Client.send(command);
   } catch (error) {
-    console.error("S3 delete error:", error);
+    logger.error(
+      {
+        err: error instanceof Error ? error : new Error(String(error)),
+        key,
+      },
+      "S3 delete error.",
+    );
 
     throw new AppError(
       "Failed to delete file from storage.",

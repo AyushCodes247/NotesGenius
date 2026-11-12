@@ -4,28 +4,46 @@ import {
   loginSchema,
   handleSchema,
   updateSchema,
-} from "@validators/index.validator.js";
+} from "@/validators/users.validator.js";
 import validate from "@middlewares/validate.middleware.js";
 import UserController from "@controllers/users/index.controller.js";
 import auth from "@middlewares/auth.middleware.js";
+import { profileRateLimit, authRateLimit } from "@utils/rateLimiters.util.js";
 
 export const router: Router = Router();
 
-router.post("/register", validate(registerSchema), UserController.register);
+router.post(
+  "/register",
+  authRateLimit,
+  validate(registerSchema),
+  UserController.register,
+);
 
-router.post("/login", validate(loginSchema), UserController.login);
+router.post(
+  "/login",
+  authRateLimit,
+  validate(loginSchema),
+  UserController.login,
+);
 
-router.get("/me", auth, UserController.profile);
+router.get("/me", auth, profileRateLimit, UserController.profile);
 
-router.patch("/me", auth, validate(updateSchema), UserController.updateProfile);
+router.patch(
+  "/me",
+  auth,
+  profileRateLimit,
+  validate(updateSchema),
+  UserController.updateProfile,
+);
 
 router.put(
   "/handle",
   auth,
+  profileRateLimit,
   validate(handleSchema),
   UserController.updateHandle,
 );
 
-router.post("/refresh", UserController.refresh);
+router.post("/refresh", authRateLimit, UserController.refresh);
 
-router.post("/logout", auth, UserController.logout);
+router.post("/logout", auth, authRateLimit, UserController.logout);
