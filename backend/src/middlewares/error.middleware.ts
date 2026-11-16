@@ -9,6 +9,7 @@ import { ZodError } from "zod";
 
 import env from "@configs/env.config.js";
 import { AppError } from "@/utils/general.util.js";
+import logger from "@utils/logger.util.js"
 
 const globalErrorHandler: ErrorRequestHandler = (
   err: Error,
@@ -46,6 +47,8 @@ const globalErrorHandler: ErrorRequestHandler = (
     response["errors"] = validationErrors;
   }
 
+  
+
   if (env.NODE_ENV !== "production") {
     response["error"] = {
       name: error.name,
@@ -54,6 +57,8 @@ const globalErrorHandler: ErrorRequestHandler = (
       cause: error.cause,
     };
   }
+
+  logger.error(error);
 
   res.status(error.statusCode).json(response);
 };

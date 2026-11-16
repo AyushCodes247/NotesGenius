@@ -1,0 +1,29 @@
+@import "tailwindcss";
+
+/* ========================================
+   NoteGenius Custom Scrollbar
+   ======================================== */
+
+html {
+  scrollbar-width: thin;
+  scrollbar-color: #252525 #080808;
+}
+
+/* Chrome, Edge, Safari */
+html::-webkit-scrollbar {
+  width: 8px;
+}
+
+html::-webkit-scrollbar-track {
+  background: #080808;
+}
+
+html::-webkit-scrollbar-thumb {
+  background: #252525;
+  border-radius: 9999px;
+  border: 2px solid #080808;
+}
+
+html::-webkit-scrollbar-thumb:hover {
+  background: #3a3a3a;
+}

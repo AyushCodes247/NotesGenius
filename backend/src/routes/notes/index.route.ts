@@ -26,8 +26,8 @@ router.post(
   "/:notesPublicId/upload",
   auth,
   uploadRateLimit,
-  validate(uploadNoteSchema),
   documentAuthentication,
+  validate(uploadNoteSchema),
   NotesController.upload,
 );
 
