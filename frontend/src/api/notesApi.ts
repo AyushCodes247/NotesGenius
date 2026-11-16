@@ -4,9 +4,9 @@ import axios from "axios";
 import api from "./api";
 import type { RootState } from "../store/store";
 
-/* -------------------------------------------------------------------------- */
-/*                                   Types                                    */
-/* -------------------------------------------------------------------------- */
+// --------------------------------------------------------------------------
+// Types
+// --------------------------------------------------------------------------
 
 export type NoteVisibility = "private" | "public";
 
@@ -75,11 +75,7 @@ export type UploadSource = {
 };
 
 export type UploadNoteResponse = {
-  public_id: string;
-  title: string;
-  source: UploadSource;
-  visibility: NoteVisibility;
-  created_at: string;
+  note: Note;
 };
 
 export type DiscussionSource =
@@ -98,16 +94,21 @@ export type DiscussionSource =
 
 export type DiscussionResult = {
   conversationId: string;
+
   note: {
     publicId: string;
     title: string;
   };
+
   response: string;
+
   pdf: {
     storageKey: string;
     url: string;
   };
+
   sources: DiscussionSource;
+
   messageCount: number;
 };
 
@@ -135,9 +136,9 @@ type ApiResponse<T> = {
   share?: T;
 };
 
-/* -------------------------------------------------------------------------- */
-/*                          Authenticated request                             */
-/* -------------------------------------------------------------------------- */
+// --------------------------------------------------------------------------
+// Authenticated request
+// --------------------------------------------------------------------------
 
 const getAuthConfig = (state: RootState) => {
   const accessToken = state.user.accessToken;
@@ -149,9 +150,9 @@ const getAuthConfig = (state: RootState) => {
   };
 };
 
-/* -------------------------------------------------------------------------- */
-/*                              Error handling                                */
-/* -------------------------------------------------------------------------- */
+// --------------------------------------------------------------------------
+// Error handling
+// --------------------------------------------------------------------------
 
 function getErrorMessage(error: unknown): string {
   if (axios.isAxiosError<ApiErrorResponse>(error)) {
@@ -169,9 +170,9 @@ function getErrorMessage(error: unknown): string {
   return "Something went wrong. Please try again.";
 }
 
-/* -------------------------------------------------------------------------- */
-/*                               Create Note                                  */
-/* -------------------------------------------------------------------------- */
+// --------------------------------------------------------------------------
+// Create Note
+// --------------------------------------------------------------------------
 
 export const createNote = createAsyncThunk<
   NoteSummary,
@@ -195,12 +196,12 @@ export const createNote = createAsyncThunk<
   }
 });
 
-/* -------------------------------------------------------------------------- */
-/*                                  Upload                                    */
-/* -------------------------------------------------------------------------- */
+// --------------------------------------------------------------------------
+// Upload
+// --------------------------------------------------------------------------
 
 export const uploadNote = createAsyncThunk<
-  UploadNoteResponse,
+  Note,
   UploadNoteInput,
   { rejectValue: string; state: RootState }
 >("notes/upload", async (payload, { rejectWithValue, getState }) => {
@@ -209,23 +210,7 @@ export const uploadNote = createAsyncThunk<
 
     const formData = new FormData();
 
-    // Append the file exactly once.
     formData.append("document", file);
-
-    console.log(
-      "UPLOAD FORM DATA:",
-      [...formData.entries()].map(([key, value]) => ({
-        key,
-        value:
-          value instanceof File
-            ? {
-                name: value.name,
-                size: value.size,
-                type: value.type,
-              }
-            : value,
-      })),
-    );
 
     const { data } = await api.post<ApiResponse<UploadNoteResponse>>(
       `/notes/${notesPublicId}/upload`,
@@ -233,21 +218,21 @@ export const uploadNote = createAsyncThunk<
       getAuthConfig(getState()),
     );
 
-    if (!data.data) {
+    if (!data.data?.note) {
       return rejectWithValue(
         data.message || "Failed to upload study material.",
       );
     }
 
-    return data.data;
+    return data.data.note;
   } catch (error: unknown) {
     return rejectWithValue(getErrorMessage(error));
   }
 });
 
-/* -------------------------------------------------------------------------- */
-/*                                Get All Notes                               */
-/* -------------------------------------------------------------------------- */
+// --------------------------------------------------------------------------
+// Get All Notes
+// --------------------------------------------------------------------------
 
 export const getAllNotes = createAsyncThunk<
   Note[],
@@ -266,9 +251,9 @@ export const getAllNotes = createAsyncThunk<
   }
 });
 
-/* -------------------------------------------------------------------------- */
-/*                              Get Shared Notes                              */
-/* -------------------------------------------------------------------------- */
+// --------------------------------------------------------------------------
+// Get Shared Notes
+// --------------------------------------------------------------------------
 
 export const getSharedNotes = createAsyncThunk<
   SharedNote[],
@@ -287,9 +272,9 @@ export const getSharedNotes = createAsyncThunk<
   }
 });
 
-/* -------------------------------------------------------------------------- */
-/*                                Get One Note                                */
-/* -------------------------------------------------------------------------- */
+// --------------------------------------------------------------------------
+// Get One Note
+// --------------------------------------------------------------------------
 
 export const getOneNote = createAsyncThunk<
   Note,
@@ -312,9 +297,9 @@ export const getOneNote = createAsyncThunk<
   }
 });
 
-/* -------------------------------------------------------------------------- */
-/*                                  Update                                    */
-/* -------------------------------------------------------------------------- */
+// --------------------------------------------------------------------------
+// Update
+// --------------------------------------------------------------------------
 
 export const updateNote = createAsyncThunk<
   Note,
@@ -341,9 +326,9 @@ export const updateNote = createAsyncThunk<
   },
 );
 
-/* -------------------------------------------------------------------------- */
-/*                                  Delete                                    */
-/* -------------------------------------------------------------------------- */
+// --------------------------------------------------------------------------
+// Delete
+// --------------------------------------------------------------------------
 
 export const deleteNote = createAsyncThunk<
   string,
@@ -359,9 +344,9 @@ export const deleteNote = createAsyncThunk<
   }
 });
 
-/* -------------------------------------------------------------------------- */
-/*                                  Discuss                                   */
-/* -------------------------------------------------------------------------- */
+// --------------------------------------------------------------------------
+// Discuss
+// --------------------------------------------------------------------------
 
 export const discussNote = createAsyncThunk<
   DiscussionResult,
@@ -397,9 +382,9 @@ export const discussNote = createAsyncThunk<
   },
 );
 
-/* -------------------------------------------------------------------------- */
-/*                                    Share                                   */
-/* -------------------------------------------------------------------------- */
+// --------------------------------------------------------------------------
+// Share
+// --------------------------------------------------------------------------
 
 export const shareNote = createAsyncThunk<
   NoteShare,
@@ -428,9 +413,9 @@ export const shareNote = createAsyncThunk<
   },
 );
 
-/* -------------------------------------------------------------------------- */
-/*                               Revoke Share                                 */
-/* -------------------------------------------------------------------------- */
+// --------------------------------------------------------------------------
+// Revoke Share
+// --------------------------------------------------------------------------
 
 export const revokeNoteShare = createAsyncThunk<
   string,

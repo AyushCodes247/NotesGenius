@@ -1,5 +1,9 @@
 import { MoreHorizontal, Pencil, Share2, Trash2 } from "lucide-react";
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
+
+import { deleteNote } from "../../../api/notesApi";
+import { useAppDispatch, useAppSelector } from "../../../hooks/appHook";
 
 type NoteActionsProps = {
   note: {
@@ -9,27 +13,43 @@ type NoteActionsProps = {
 };
 
 const NoteActions = ({ note }: NoteActionsProps) => {
+  const navigate = useNavigate();
+  const dispatch = useAppDispatch();
+
+  const { deleting } = useAppSelector((state) => state.notes);
+
   const [open, setOpen] = useState(false);
 
   const handleEdit = () => {
     setOpen(false);
 
-    // Connect to note editing UI.
     console.log("Edit note:", note.publicId);
   };
 
   const handleShare = () => {
     setOpen(false);
 
-    // Connect to share modal.
     console.log("Share note:", note.publicId);
   };
 
-  const handleDelete = () => {
+  const handleDelete = async () => {
+    if (deleting) return;
+
     setOpen(false);
 
-    // Connect to delete confirmation.
-    console.log("Delete note:", note.publicId);
+    const confirmed = window.confirm(
+      `Delete "${note.title}"?\n\nThis action cannot be undone.`,
+    );
+
+    if (!confirmed) return;
+
+    try {
+      await dispatch(deleteNote(note.publicId)).unwrap();
+
+      navigate("/dashboard");
+    } catch {
+      // The existing Redux error state handles the failure.
+    }
   };
 
   return (
@@ -37,13 +57,14 @@ const NoteActions = ({ note }: NoteActionsProps) => {
       <button
         type="button"
         onClick={() => setOpen((value) => !value)}
-        className="flex size-9 items-center justify-center rounded-[8px] border border-white/[0.08] bg-[#111111] text-white/40 transition-colors hover:border-white/[0.16] hover:text-white/70"
+        disabled={deleting}
+        className="flex size-9 items-center justify-center rounded-[8px] border border-white/[0.08] bg-[#111111] text-white/40 transition-colors hover:border-white/[0.16] hover:text-white/70 disabled:cursor-not-allowed disabled:opacity-50"
         aria-label="Note actions"
       >
         <MoreHorizontal size={17} strokeWidth={1.7} />
       </button>
 
-      {open && (
+      {open && !deleting && (
         <>
           <button
             type="button"
@@ -76,10 +97,11 @@ const NoteActions = ({ note }: NoteActionsProps) => {
             <button
               type="button"
               onClick={handleDelete}
-              className="flex w-full items-center gap-3 rounded-[6px] px-3 py-2.5 text-left text-[12px] text-red-400/70 transition-colors hover:bg-red-400/[0.06] hover:text-red-400"
+              disabled={deleting}
+              className="flex w-full items-center gap-3 rounded-[6px] px-3 py-2.5 text-left text-[12px] text-red-400/70 transition-colors hover:bg-red-400/[0.06] hover:text-red-400 disabled:cursor-not-allowed disabled:opacity-40"
             >
               <Trash2 size={14} strokeWidth={1.6} />
-              Delete note
+              {deleting ? "Deleting..." : "Delete note"}
             </button>
           </div>
         </>

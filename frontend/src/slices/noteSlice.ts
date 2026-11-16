@@ -63,7 +63,6 @@ const initialDiscussionState: DiscussionState = {
 const initialState: NotesState = {
   notes: [],
   sharedNotes: [],
-
   currentNote: null,
 
   discussion: initialDiscussionState,
@@ -85,7 +84,6 @@ const initialState: NotesState = {
 
 export const NotesSlice = createSlice({
   name: "notes",
-
   initialState,
 
   reducers: {
@@ -112,6 +110,7 @@ export const NotesSlice = createSlice({
 
     clearCurrentNote: (state) => {
       state.currentNote = null;
+
       state.discussion = {
         ...initialDiscussionState,
         messages: [],
@@ -143,9 +142,9 @@ export const NotesSlice = createSlice({
   extraReducers: (builder) => {
     builder
 
-      /* ------------------------------------------------------------------ */
-      /*                              Create                                */
-      /* ------------------------------------------------------------------ */
+      // ------------------------------------------------------------------
+      // Create
+      // ------------------------------------------------------------------
 
       .addCase(createNote.pending, (state) => {
         state.creating = true;
@@ -183,9 +182,9 @@ export const NotesSlice = createSlice({
           action.payload ?? action.error.message ?? "Failed to create note.";
       })
 
-      /* ------------------------------------------------------------------ */
-      /*                               Upload                               */
-      /* ------------------------------------------------------------------ */
+      // ------------------------------------------------------------------
+      // Upload
+      // ------------------------------------------------------------------
 
       .addCase(uploadNote.pending, (state) => {
         state.uploading = true;
@@ -196,27 +195,18 @@ export const NotesSlice = createSlice({
         state.uploading = false;
         state.error = null;
 
-        const uploaded = action.payload;
+        const uploadedNote = action.payload;
 
-        const updatedNote = state.notes.find(
-          (note) => note.publicId === uploaded.public_id,
+        const index = state.notes.findIndex(
+          (note) => note.publicId === uploadedNote.publicId,
         );
 
-        if (updatedNote) {
-          updatedNote.title = uploaded.title;
-          updatedNote.visibility = uploaded.visibility;
-          updatedNote.createdAt = uploaded.created_at;
-          updatedNote.updatedAt = uploaded.created_at;
+        if (index !== -1) {
+          state.notes[index] = uploadedNote;
         }
 
-        if (
-          state.currentNote &&
-          state.currentNote.publicId === uploaded.public_id
-        ) {
-          state.currentNote.title = uploaded.title;
-          state.currentNote.visibility = uploaded.visibility;
-          state.currentNote.createdAt = uploaded.created_at;
-          state.currentNote.updatedAt = uploaded.created_at;
+        if (state.currentNote?.publicId === uploadedNote.publicId) {
+          state.currentNote = uploadedNote;
         }
       })
 
@@ -229,9 +219,9 @@ export const NotesSlice = createSlice({
           "Failed to upload the document.";
       })
 
-      /* ------------------------------------------------------------------ */
-      /*                              Get All                               */
-      /* ------------------------------------------------------------------ */
+      // ------------------------------------------------------------------
+      // Get All
+      // ------------------------------------------------------------------
 
       .addCase(getAllNotes.pending, (state) => {
         state.loadingNotes = true;
@@ -254,9 +244,9 @@ export const NotesSlice = createSlice({
           "Failed to load your notes.";
       })
 
-      /* ------------------------------------------------------------------ */
-      /*                            Get Shared                              */
-      /* ------------------------------------------------------------------ */
+      // ------------------------------------------------------------------
+      // Get Shared
+      // ------------------------------------------------------------------
 
       .addCase(getSharedNotes.pending, (state) => {
         state.loadingShared = true;
@@ -279,9 +269,9 @@ export const NotesSlice = createSlice({
           "Failed to load shared notes.";
       })
 
-      /* ------------------------------------------------------------------ */
-      /*                              Get One                               */
-      /* ------------------------------------------------------------------ */
+      // ------------------------------------------------------------------
+      // Get One
+      // ------------------------------------------------------------------
 
       .addCase(getOneNote.pending, (state) => {
         state.loadingNote = true;
@@ -310,9 +300,9 @@ export const NotesSlice = createSlice({
           action.payload ?? action.error.message ?? "Failed to load the note.";
       })
 
-      /* ------------------------------------------------------------------ */
-      /*                              Update                                */
-      /* ------------------------------------------------------------------ */
+      // ------------------------------------------------------------------
+      // Update
+      // ------------------------------------------------------------------
 
       .addCase(updateNote.pending, (state) => {
         state.updating = true;
@@ -343,9 +333,9 @@ export const NotesSlice = createSlice({
           "Failed to update the note.";
       })
 
-      /* ------------------------------------------------------------------ */
-      /*                              Delete                                */
-      /* ------------------------------------------------------------------ */
+      // ------------------------------------------------------------------
+      // Delete
+      // ------------------------------------------------------------------
 
       .addCase(deleteNote.pending, (state) => {
         state.deleting = true;
@@ -383,9 +373,9 @@ export const NotesSlice = createSlice({
           "Failed to delete the note.";
       })
 
-      /* ------------------------------------------------------------------ */
-      /*                              Discuss                               */
-      /* ------------------------------------------------------------------ */
+      // ------------------------------------------------------------------
+      // Discuss
+      // ------------------------------------------------------------------
 
       .addCase(discussNote.pending, (state) => {
         state.discussing = true;
@@ -406,7 +396,6 @@ export const NotesSlice = createSlice({
         });
 
         state.discussion.sources = result.sources;
-
         state.discussion.messageCount = result.messageCount;
 
         if (result.pdf.url && state.currentNote) {
@@ -423,9 +412,9 @@ export const NotesSlice = createSlice({
           "Failed to generate an AI response.";
       })
 
-      /* ------------------------------------------------------------------ */
-      /*                                Share                               */
-      /* ------------------------------------------------------------------ */
+      // ------------------------------------------------------------------
+      // Share
+      // ------------------------------------------------------------------
 
       .addCase(shareNote.pending, (state) => {
         state.sharing = true;
@@ -444,9 +433,9 @@ export const NotesSlice = createSlice({
           action.payload ?? action.error.message ?? "Failed to share the note.";
       })
 
-      /* ------------------------------------------------------------------ */
-      /*                           Revoke Share                             */
-      /* ------------------------------------------------------------------ */
+      // ------------------------------------------------------------------
+      // Revoke Share
+      // ------------------------------------------------------------------
 
       .addCase(revokeNoteShare.pending, (state) => {
         state.sharing = true;
