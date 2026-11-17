@@ -112,6 +112,22 @@ export type DiscussionResult = {
   messageCount: number;
 };
 
+export type ConversationMessage = {
+  messageId: string;
+  role: "user" | "assistant";
+  content: string;
+  sources: DiscussionSource | null;
+  createdAt: string;
+};
+
+export type Conversation = {
+  conversationId: string;
+  title: string;
+  messages: ConversationMessage[];
+  messageCount: number;
+  lastMessageAt: string | null;
+};
+
 export type NoteShare = {
   publicId: string;
   noteId: string;
@@ -119,6 +135,16 @@ export type NoteShare = {
   recipientUserId: string;
   createdAt: string;
   revokedAt: string | null;
+};
+
+export type SharedByMe = {
+  sharePublicId: string;
+  notesPublicId: string;
+  title: string;
+  pdfUrl: string | null;
+  recipientUserId: string;
+  recipientUserHandle: string;
+  sharedAt: string;
 };
 
 type ApiErrorResponse = {
@@ -134,6 +160,7 @@ type ApiResponse<T> = {
   notes?: T;
   result?: T;
   share?: T;
+  shares?: T;
 };
 
 // --------------------------------------------------------------------------
@@ -235,12 +262,12 @@ export const uploadNote = createAsyncThunk<
 // --------------------------------------------------------------------------
 
 export const getAllNotes = createAsyncThunk<
-  Note[],
+  NoteSummary[],
   void,
   { rejectValue: string; state: RootState }
 >("notes/getAll", async (_, { rejectWithValue, getState }) => {
   try {
-    const { data } = await api.get<ApiResponse<Note[]>>(
+    const { data } = await api.get<ApiResponse<NoteSummary[]>>(
       "/notes/all",
       getAuthConfig(getState()),
     );
@@ -267,6 +294,27 @@ export const getSharedNotes = createAsyncThunk<
     );
 
     return data.notes ?? [];
+  } catch (error: unknown) {
+    return rejectWithValue(getErrorMessage(error));
+  }
+});
+
+// --------------------------------------------------------------------------
+// Get Shared Notes By Me
+// --------------------------------------------------------------------------
+
+export const getSharedByMe = createAsyncThunk<
+  SharedByMe[],
+  void,
+  { rejectValue: string; state: RootState }
+>("notes/getSharedByMe", async (_, { rejectWithValue, getState }) => {
+  try {
+    const { data } = await api.get<ApiResponse<SharedByMe[]>>(
+      "/notes/shared-by-me",
+      getAuthConfig(getState()),
+    );
+
+    return data.shares ?? [];
   } catch (error: unknown) {
     return rejectWithValue(getErrorMessage(error));
   }
@@ -376,6 +424,30 @@ export const discussNote = createAsyncThunk<
       }
 
       return data.result;
+    } catch (error: unknown) {
+      return rejectWithValue(getErrorMessage(error));
+    }
+  },
+);
+
+// --------------------------------------------------------------------------
+// Get Conversation
+// --------------------------------------------------------------------------
+
+export const getConversation = createAsyncThunk<
+  Conversation | null,
+  string,
+  { rejectValue: string; state: RootState }
+>(
+  "notes/getConversation",
+  async (notesPublicId, { rejectWithValue, getState }) => {
+    try {
+      const { data } = await api.get<{
+        success: boolean;
+        conversation: Conversation | null;
+      }>(`/notes/${notesPublicId}/conversation`, getAuthConfig(getState()));
+
+      return data.conversation;
     } catch (error: unknown) {
       return rejectWithValue(getErrorMessage(error));
     }

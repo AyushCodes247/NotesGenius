@@ -1,10 +1,10 @@
-import type { Note } from "../../api/notesApi";
+import type { NoteSummary } from "../../api/notesApi";
 
 import EmptyNotes from "./EmptyNotes";
 import NoteCard from "./NoteCard";
 
 type NotesGridProps = {
-  notes: Note[];
+  notes: NoteSummary[];
   loading: boolean;
 };
 

@@ -177,6 +177,7 @@ class UserService {
         email: user.email,
         publicId: user.publicId,
         userhandle: user.userHandle,
+        createdAt : user.createdAt
       },
       accessToken,
       refreshToken,

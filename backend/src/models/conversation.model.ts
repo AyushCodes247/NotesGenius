@@ -5,10 +5,25 @@ export type ConversationStatus = "ACTIVE" | "ARCHIVED";
 
 export type MessageRole = "system" | "user" | "assistant" | "tool";
 
+export type ConversationSource =
+  | {
+      type: "document";
+      documentPublicId: string;
+    }
+  | {
+      type: "web";
+      results: {
+        title: string;
+        url: string;
+        favicon?: string;
+      }[];
+    };
+
 export interface IConversationMessage {
   messageId: string;
   role: MessageRole;
   content: string;
+  sources?: ConversationSource;
   createdAt: Date;
 }
 
@@ -44,6 +59,11 @@ const conversationMessageSchema = new Schema<IConversationMessage>(
       type: String,
       required: true,
       trim: true,
+    },
+
+    sources: {
+      type: Schema.Types.Mixed,
+      required: false,
     },
 
     createdAt: {

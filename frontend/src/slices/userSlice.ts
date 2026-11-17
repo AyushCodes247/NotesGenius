@@ -1,4 +1,5 @@
 import { createSlice, type PayloadAction } from "@reduxjs/toolkit";
+
 import {
   loginUser,
   registerUser,
@@ -18,6 +19,7 @@ type UserState = {
 const initialUser: User = {
   publicId: "",
   username: "",
+  userhandle: "",
   email: "",
   createdAt: "",
 };
@@ -71,11 +73,13 @@ export const UserSlice = createSlice({
 
   extraReducers: (builder) => {
     builder
+
       // Registration
       .addCase(registerUser.pending, (state) => {
         state.loading = true;
         state.error = null;
       })
+
       .addCase(registerUser.fulfilled, (state, action) => {
         state.loading = false;
         state.isInitializing = false;
@@ -83,6 +87,7 @@ export const UserSlice = createSlice({
         state.user = action.payload.user;
         state.accessToken = action.payload.accessToken;
       })
+
       .addCase(registerUser.rejected, (state, action) => {
         state.loading = false;
         state.isInitializing = false;
@@ -97,6 +102,7 @@ export const UserSlice = createSlice({
         state.loading = true;
         state.error = null;
       })
+
       .addCase(loginUser.fulfilled, (state, action) => {
         state.loading = false;
         state.isInitializing = false;
@@ -104,6 +110,7 @@ export const UserSlice = createSlice({
         state.user = action.payload.user;
         state.accessToken = action.payload.accessToken;
       })
+
       .addCase(loginUser.rejected, (state, action) => {
         state.loading = false;
         state.isInitializing = false;
@@ -118,6 +125,7 @@ export const UserSlice = createSlice({
         state.authCheckStarted = true;
         state.isInitializing = true;
       })
+
       .addCase(refreshSession.fulfilled, (state, action) => {
         state.authCheckStarted = false;
         state.isInitializing = false;
@@ -126,6 +134,7 @@ export const UserSlice = createSlice({
         state.user = action.payload.user;
         state.accessToken = action.payload.accessToken;
       })
+
       .addCase(refreshSession.rejected, (state, action) => {
         state.authCheckStarted = false;
         state.isInitializing = false;

@@ -19,6 +19,7 @@ import {
   retrievalRateLimit,
   sharingRateLimit,
 } from "@utils/rateLimiters.util.js";
+import ConversationController from "@controllers/conversation/index.controller.js";
 
 export const router: Router = Router();
 
@@ -44,6 +45,20 @@ router.post(
 router.get("/all", auth, retrievalRateLimit, NotesController.getAll);
 
 router.get("/shared", auth, retrievalRateLimit, NotesController.getShared);
+
+router.get(
+  "/shared-by-me",
+  auth,
+  retrievalRateLimit,
+  NotesController.getSharedByMe,
+);
+
+router.get(
+  "/:notesPublicId/conversation",
+  auth,
+  retrievalRateLimit,
+  ConversationController.get,
+);
 
 router.get(
   "/:notesPublicId/one",

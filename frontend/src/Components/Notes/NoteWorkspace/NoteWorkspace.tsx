@@ -8,7 +8,7 @@ import {
   clearError,
 } from "../../../slices/noteSlice";
 
-import { getOneNote, uploadNote } from "../../../api/notesApi";
+import { getConversation, getOneNote, uploadNote } from "../../../api/notesApi";
 
 import { useAppDispatch, useAppSelector } from "../../../hooks/appHook";
 
@@ -39,7 +39,9 @@ const NoteWorkspace = () => {
     if (!notesPublicId) return;
 
     dispatch(clearError());
+
     dispatch(getOneNote(notesPublicId));
+    dispatch(getConversation(notesPublicId));
 
     return () => {
       dispatch(clearCurrentNote());
@@ -209,9 +211,9 @@ const NoteWorkspace = () => {
       )}
 
       {/* Main workspace */}
-      <main className="min-h-0 flex-1">
+      <main className="relative min-h-0 flex-1">
         <div className="flex h-full min-h-0">
-          <section className="min-w-0 flex-1">
+          <section className="min-h-0 min-w-0 flex-1">
             <DiscussionPanel notesPublicId={currentNote.publicId} />
           </section>
 

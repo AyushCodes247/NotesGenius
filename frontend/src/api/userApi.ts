@@ -7,6 +7,7 @@ export type User = {
   publicId: string;
   username: string;
   email: string;
+  userhandle : string;
   createdAt: string;
 };
 

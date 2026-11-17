@@ -250,6 +250,21 @@ class NotesController {
     },
   );
 
+  getSharedByMe: RequestHandler = asyncHandler(
+    async (req: Request, res: Response): Promise<unknown> => {
+      const userPublicId = req.user!.publicId;
+
+      const shares = await NotesService.getSharedByMe({
+        userPublicId,
+      });
+
+      return res.status(200).json({
+        success: true,
+        shares,
+      });
+    },
+  );
+
   revokeShare: RequestHandler = asyncHandler(
     async (req: Request, res: Response): Promise<unknown> => {
       const userPublicId = req.user!.publicId;

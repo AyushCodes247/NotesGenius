@@ -297,6 +297,20 @@ class NotesService {
       await notesCacheService.invalidateNote(userPublicId, note.publicId);
     }
 
+    const sources = note.sourceDocumentId
+      ? {
+          type: "document" as const,
+          documentPublicId: note.sourceDocumentId,
+        }
+      : {
+          type: "web" as const,
+          results: webSources.map((source) => ({
+            title: source.title,
+            url: source.url,
+            ...(source.favicon ? { favicon: source.favicon } : {}),
+          })),
+        };
+
     conversation.messages.push({
       messageId: crypto.randomUUID(),
       role: "user",
@@ -308,6 +322,7 @@ class NotesService {
       messageId: crypto.randomUUID(),
       role: "assistant",
       content: answer,
+      sources,
       createdAt: new Date(),
     });
 
@@ -317,32 +332,22 @@ class NotesService {
 
     return {
       conversationId: conversation.conversationId,
-
       note: {
         publicId: note.publicId,
         title: note.title,
       },
-
       response: answer,
-
       pdf:
         normalizedCommand === "@create"
           ? {
               storageKey: pdfStorageKey,
               url: pdfUrl,
             }
-          : { storageKey: "", url: "" },
-
-      sources: note.sourceDocumentId
-        ? {
-            type: "document",
-            documentPublicId: note.sourceDocumentId,
-          }
-        : {
-            type: "web",
-            results: webSources,
-          },
-
+          : {
+              storageKey: "",
+              url: "",
+            },
+      sources,
       messageCount: conversation.messages.length,
     };
   }
@@ -559,6 +564,7 @@ class NotesService {
         title: noteTable.title,
         content: noteTable.content,
         sourceText: noteTable.sourceText,
+        sourceDocumentId: noteTable.sourceDocumentId,
         topic: noteTable.topic,
         visibility: noteTable.visibility,
         pdfUrl: noteTable.pdfUrl,
@@ -935,6 +941,38 @@ class NotesService {
     );
 
     return revokedShare;
+  }
+
+  async getSharedByMe({ userPublicId }: { userPublicId: string }) {
+    const sharedNotes = await db
+      .select({
+        sharePublicId: noteShareTable.publicId,
+
+        notesPublicId: noteTable.publicId,
+        title: noteTable.title,
+        pdfUrl: noteShareTable.pdfUrl,
+
+        recipientUserId: userTable.publicId,
+        recipientUserHandle: userTable.userHandle,
+
+        sharedAt: noteShareTable.createdAt,
+      })
+      .from(noteShareTable)
+      .innerJoin(noteTable, eq(noteShareTable.noteId, noteTable.publicId))
+      .innerJoin(
+        userTable,
+        eq(noteShareTable.recipientUserId, userTable.publicId),
+      )
+      .where(
+        and(
+          eq(noteTable.userId, userPublicId),
+          isNull(noteShareTable.revokedAt),
+          isNull(noteTable.deletedAt),
+        ),
+      )
+      .orderBy(desc(noteShareTable.createdAt));
+
+    return sharedNotes;
   }
 }
 

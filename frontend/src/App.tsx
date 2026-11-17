@@ -11,6 +11,10 @@ import DashBoard from "./Components/DashBoard/DashBoard";
 import Notes from "./Components/Notes/Notes";
 import NewNote from "./Components/Notes/NewNote/NewNote";
 import NoteWorkspace from "./Components/Notes/NoteWorkspace/NoteWorkspace";
+import Account from "./Components/Account/Account";
+
+import Quizzes from "./Components/Quizzes/Quizzes";
+import QuizDetails from "./Components/Quizzes/QuizDetails";
 
 import AppLayout from "./Components/Layout/AppLayout";
 
@@ -32,10 +36,17 @@ const App = () => {
             <Route path="/notes" element={<Notes />} />
 
             <Route path="/notes/new" element={<NewNote />} />
+
+            <Route path="/quizzes" element={<Quizzes />} />
+
+            <Route path="/account" element={<Account />} />
           </Route>
 
           {/* Standalone note workspace */}
           <Route path="/notes/:notesPublicId" element={<NoteWorkspace />} />
+
+          {/* Standalone quiz workspace */}
+          <Route path="/quizzes/:quizPublicId" element={<QuizDetails />} />
         </Route>
       </Routes>
     </AuthInitializer>

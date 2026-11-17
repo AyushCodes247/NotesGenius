@@ -5,7 +5,9 @@ import {
   deleteNote,
   discussNote,
   getAllNotes,
+  getConversation,
   getOneNote,
+  getSharedByMe,
   getSharedNotes,
   revokeNoteShare,
   shareNote,
@@ -13,26 +15,28 @@ import {
   uploadNote,
   type DiscussionResult,
   type Note,
+  type NoteSummary,
+  type SharedByMe,
   type SharedNote,
 } from "../api/notesApi";
 
+type DiscussionMessage = {
+  role: "user" | "assistant";
+  content: string;
+  sources: DiscussionResult["sources"] | null;
+};
+
 type DiscussionState = {
   conversationId: string;
-
-  messages: {
-    role: "user" | "assistant";
-    content: string;
-  }[];
-
-  sources: DiscussionResult["sources"] | null;
-
+  messages: DiscussionMessage[];
   messageCount: number;
 };
 
 type NotesState = {
-  notes: Note[];
+  notes: NoteSummary[];
 
   sharedNotes: SharedNote[];
+  sharedByMe: SharedByMe[];
 
   currentNote: Note | null;
 
@@ -41,6 +45,7 @@ type NotesState = {
   loading: boolean;
   loadingNotes: boolean;
   loadingShared: boolean;
+  loadingSharedByMe: boolean;
   loadingNote: boolean;
 
   creating: boolean;
@@ -56,13 +61,14 @@ type NotesState = {
 const initialDiscussionState: DiscussionState = {
   conversationId: "",
   messages: [],
-  sources: null,
   messageCount: 0,
 };
 
 const initialState: NotesState = {
   notes: [],
   sharedNotes: [],
+  sharedByMe: [],
+
   currentNote: null,
 
   discussion: initialDiscussionState,
@@ -70,6 +76,7 @@ const initialState: NotesState = {
   loading: false,
   loadingNotes: false,
   loadingShared: false,
+  loadingSharedByMe: false,
   loadingNote: false,
 
   creating: false,
@@ -82,8 +89,9 @@ const initialState: NotesState = {
   error: null,
 };
 
-export const NotesSlice = createSlice({
+const NotesSlice = createSlice({
   name: "notes",
+
   initialState,
 
   reducers: {
@@ -133,18 +141,38 @@ export const NotesSlice = createSlice({
       action: PayloadAction<{
         role: "user" | "assistant";
         content: string;
+        sources?: DiscussionResult["sources"] | null;
       }>,
     ) => {
-      state.discussion.messages.push(action.payload);
+      state.discussion.messages.push({
+        role: action.payload.role,
+        content: action.payload.content,
+        sources: action.payload.sources ?? null,
+      });
+    },
+
+    hydrateDiscussion: (
+      state,
+      action: PayloadAction<{
+        conversationId: string;
+        messages: DiscussionMessage[];
+        messageCount: number;
+      }>,
+    ) => {
+      state.discussion.conversationId = action.payload.conversationId;
+
+      state.discussion.messages = action.payload.messages;
+
+      state.discussion.messageCount = action.payload.messageCount;
     },
   },
 
   extraReducers: (builder) => {
     builder
 
-      // ------------------------------------------------------------------
-      // Create
-      // ------------------------------------------------------------------
+      // --------------------------------------------------------------------
+      // Create Note
+      // --------------------------------------------------------------------
 
       .addCase(createNote.pending, (state) => {
         state.creating = true;
@@ -155,24 +183,17 @@ export const NotesSlice = createSlice({
         state.creating = false;
         state.error = null;
 
-        const newNote: Note = {
-          publicId: action.payload.publicId,
-          title: action.payload.title,
-          content: "",
-          sourceText: null,
-          topic: null,
-          visibility: action.payload.visibility,
-          pdfUrl: null,
-          createdAt: action.payload.createdAt,
-          updatedAt: action.payload.updatedAt,
-        };
+        const newNote = action.payload;
 
+        /*
+         * createNote returns NoteSummary.
+         * Therefore it belongs in the notes list,
+         * not currentNote.
+         */
         state.notes = [
           newNote,
           ...state.notes.filter((note) => note.publicId !== newNote.publicId),
         ];
-
-        state.currentNote = newNote;
       })
 
       .addCase(createNote.rejected, (state, action) => {
@@ -182,9 +203,9 @@ export const NotesSlice = createSlice({
           action.payload ?? action.error.message ?? "Failed to create note.";
       })
 
-      // ------------------------------------------------------------------
-      // Upload
-      // ------------------------------------------------------------------
+      // --------------------------------------------------------------------
+      // Upload Note
+      // --------------------------------------------------------------------
 
       .addCase(uploadNote.pending, (state) => {
         state.uploading = true;
@@ -201,8 +222,18 @@ export const NotesSlice = createSlice({
           (note) => note.publicId === uploadedNote.publicId,
         );
 
+        const uploadedSummary: NoteSummary = {
+          publicId: uploadedNote.publicId,
+          title: uploadedNote.title,
+          visibility: uploadedNote.visibility,
+          createdAt: uploadedNote.createdAt,
+          updatedAt: uploadedNote.updatedAt,
+        };
+
         if (index !== -1) {
-          state.notes[index] = uploadedNote;
+          state.notes[index] = uploadedSummary;
+        } else {
+          state.notes.unshift(uploadedSummary);
         }
 
         if (state.currentNote?.publicId === uploadedNote.publicId) {
@@ -219,9 +250,9 @@ export const NotesSlice = createSlice({
           "Failed to upload the document.";
       })
 
-      // ------------------------------------------------------------------
-      // Get All
-      // ------------------------------------------------------------------
+      // --------------------------------------------------------------------
+      // Get All Notes
+      // --------------------------------------------------------------------
 
       .addCase(getAllNotes.pending, (state) => {
         state.loadingNotes = true;
@@ -244,9 +275,9 @@ export const NotesSlice = createSlice({
           "Failed to load your notes.";
       })
 
-      // ------------------------------------------------------------------
-      // Get Shared
-      // ------------------------------------------------------------------
+      // --------------------------------------------------------------------
+      // Get Shared Notes
+      // --------------------------------------------------------------------
 
       .addCase(getSharedNotes.pending, (state) => {
         state.loadingShared = true;
@@ -269,9 +300,34 @@ export const NotesSlice = createSlice({
           "Failed to load shared notes.";
       })
 
-      // ------------------------------------------------------------------
-      // Get One
-      // ------------------------------------------------------------------
+      // --------------------------------------------------------------------
+      // Get Shared Notes By Me
+      // --------------------------------------------------------------------
+
+      .addCase(getSharedByMe.pending, (state) => {
+        state.loadingSharedByMe = true;
+        state.error = null;
+      })
+
+      .addCase(getSharedByMe.fulfilled, (state, action) => {
+        state.loadingSharedByMe = false;
+        state.error = null;
+
+        state.sharedByMe = action.payload;
+      })
+
+      .addCase(getSharedByMe.rejected, (state, action) => {
+        state.loadingSharedByMe = false;
+
+        state.error =
+          action.payload ??
+          action.error.message ??
+          "Failed to load files shared by you.";
+      })
+
+      // --------------------------------------------------------------------
+      // Get One Note
+      // --------------------------------------------------------------------
 
       .addCase(getOneNote.pending, (state) => {
         state.loadingNote = true;
@@ -289,7 +345,13 @@ export const NotesSlice = createSlice({
         );
 
         if (index !== -1) {
-          state.notes[index] = action.payload;
+          state.notes[index] = {
+            publicId: action.payload.publicId,
+            title: action.payload.title,
+            visibility: action.payload.visibility,
+            createdAt: action.payload.createdAt,
+            updatedAt: action.payload.updatedAt,
+          };
         }
       })
 
@@ -300,9 +362,43 @@ export const NotesSlice = createSlice({
           action.payload ?? action.error.message ?? "Failed to load the note.";
       })
 
-      // ------------------------------------------------------------------
-      // Update
-      // ------------------------------------------------------------------
+      // --------------------------------------------------------------------
+      // Get Conversation
+      // --------------------------------------------------------------------
+
+      .addCase(getConversation.fulfilled, (state, action) => {
+        state.error = null;
+
+        if (!action.payload) {
+          state.discussion = {
+            ...initialDiscussionState,
+            messages: [],
+          };
+
+          return;
+        }
+
+        state.discussion.conversationId = action.payload.conversationId;
+
+        state.discussion.messages = action.payload.messages.map((message) => ({
+          role: message.role,
+          content: message.content,
+          sources: message.sources ?? null,
+        }));
+
+        state.discussion.messageCount = action.payload.messageCount;
+      })
+
+      .addCase(getConversation.rejected, (state, action) => {
+        state.error =
+          action.payload ??
+          action.error.message ??
+          "Failed to load the conversation.";
+      })
+
+      // --------------------------------------------------------------------
+      // Update Note
+      // --------------------------------------------------------------------
 
       .addCase(updateNote.pending, (state) => {
         state.updating = true;
@@ -320,7 +416,13 @@ export const NotesSlice = createSlice({
         );
 
         if (index !== -1) {
-          state.notes[index] = action.payload;
+          state.notes[index] = {
+            publicId: action.payload.publicId,
+            title: action.payload.title,
+            visibility: action.payload.visibility,
+            createdAt: action.payload.createdAt,
+            updatedAt: action.payload.updatedAt,
+          };
         }
       })
 
@@ -333,9 +435,9 @@ export const NotesSlice = createSlice({
           "Failed to update the note.";
       })
 
-      // ------------------------------------------------------------------
-      // Delete
-      // ------------------------------------------------------------------
+      // --------------------------------------------------------------------
+      // Delete Note
+      // --------------------------------------------------------------------
 
       .addCase(deleteNote.pending, (state) => {
         state.deleting = true;
@@ -373,9 +475,9 @@ export const NotesSlice = createSlice({
           "Failed to delete the note.";
       })
 
-      // ------------------------------------------------------------------
-      // Discuss
-      // ------------------------------------------------------------------
+      // --------------------------------------------------------------------
+      // Discuss Note
+      // --------------------------------------------------------------------
 
       .addCase(discussNote.pending, (state) => {
         state.discussing = true;
@@ -393,9 +495,9 @@ export const NotesSlice = createSlice({
         state.discussion.messages.push({
           role: "assistant",
           content: result.response,
+          sources: result.sources ?? null,
         });
 
-        state.discussion.sources = result.sources;
         state.discussion.messageCount = result.messageCount;
 
         if (result.pdf.url && state.currentNote) {
@@ -412,9 +514,9 @@ export const NotesSlice = createSlice({
           "Failed to generate an AI response.";
       })
 
-      // ------------------------------------------------------------------
-      // Share
-      // ------------------------------------------------------------------
+      // --------------------------------------------------------------------
+      // Share Note
+      // --------------------------------------------------------------------
 
       .addCase(shareNote.pending, (state) => {
         state.sharing = true;
@@ -433,18 +535,22 @@ export const NotesSlice = createSlice({
           action.payload ?? action.error.message ?? "Failed to share the note.";
       })
 
-      // ------------------------------------------------------------------
-      // Revoke Share
-      // ------------------------------------------------------------------
+      // --------------------------------------------------------------------
+      // Revoke Note Share
+      // --------------------------------------------------------------------
 
       .addCase(revokeNoteShare.pending, (state) => {
         state.sharing = true;
         state.error = null;
       })
 
-      .addCase(revokeNoteShare.fulfilled, (state) => {
+      .addCase(revokeNoteShare.fulfilled, (state, action) => {
         state.sharing = false;
         state.error = null;
+
+        state.sharedByMe = state.sharedByMe.filter(
+          (share) => share.sharePublicId !== action.payload,
+        );
       })
 
       .addCase(revokeNoteShare.rejected, (state, action) => {
@@ -467,6 +573,7 @@ export const {
   clearDiscussion,
   setDiscussionConversation,
   addDiscussionMessage,
+  hydrateDiscussion,
 } = NotesSlice.actions;
 
 export default NotesSlice.reducer;

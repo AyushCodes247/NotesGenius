@@ -1,13 +1,10 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { Sparkles } from "lucide-react";
 
 import { discussNote } from "../../../api/notesApi";
 import { useAppDispatch, useAppSelector } from "../../../hooks/appHook";
 
-import {
-  addDiscussionMessage,
-  clearDiscussion,
-} from "../../../slices/noteSlice";
+import { addDiscussionMessage } from "../../../slices/noteSlice";
 
 import DiscussionMessage from "./DiscussionMessage";
 import DiscussionInput, { type DiscussionMode } from "./DiscussionInput";
@@ -33,10 +30,6 @@ const DiscussionPanel = ({ notesPublicId }: DiscussionPanelProps) => {
 
   const [input, setInput] = useState("");
   const [mode, setMode] = useState<DiscussionMode>("summarize");
-
-  useEffect(() => {
-    dispatch(clearDiscussion());
-  }, [dispatch, notesPublicId]);
 
   const handleSend = async () => {
     const message = input.trim();

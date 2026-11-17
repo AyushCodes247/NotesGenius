@@ -101,7 +101,7 @@ const Logout = () => {
   };
 
   return (
-    <div className="flex flex-col gap-2">
+    <div className="flex w-full flex-col gap-2">
       <button
         ref={buttonRef}
         type="button"
@@ -110,29 +110,32 @@ const Logout = () => {
         aria-label="Log out"
         className="
           group
-          inline-flex
-          h-10
+          flex
+          h-11
+          w-full
           items-center
           justify-center
-          gap-2
+          gap-2.5
           rounded-lg
           border
-          border-red-400/[0.14]
-          bg-red-400/[0.035]
+          border-[#252525]
+          bg-[#111111]
           px-4
           text-sm
           font-medium
-          text-red-300/75
+          text-[#A3A3A3]
           outline-none
           transition-colors
           duration-200
-          hover:border-red-400/[0.28]
-          hover:bg-red-400/[0.07]
-          hover:text-red-300
+          hover:border-[#303030]
+          hover:bg-[#171717]
+          hover:text-[#F5F5F5]
           focus-visible:ring-2
-          focus-visible:ring-red-400/30
+          focus-visible:ring-[#5B8CFF]/30
           disabled:cursor-not-allowed
           disabled:opacity-50
+          sm:w-auto
+          sm:min-w-[120px]
         "
       >
         <span
@@ -141,10 +144,14 @@ const Logout = () => {
           aria-hidden="true"
         >
           {isLoggingOut ? (
-            <LoaderCircle size={17} className="animate-spin" />
+            <LoaderCircle
+              size={16}
+              strokeWidth={1.8}
+              className="animate-spin"
+            />
           ) : (
             <LogOut
-              size={17}
+              size={16}
               strokeWidth={1.8}
               className="transition-transform duration-200"
             />
@@ -157,7 +164,7 @@ const Logout = () => {
       {logoutError && (
         <p
           role="alert"
-          className="max-w-[240px] text-xs leading-5 text-red-300/70"
+          className="max-w-[320px] text-xs leading-5 text-[#A3A3A3]"
         >
           {logoutError}
         </p>
