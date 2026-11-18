@@ -1,20 +1,22 @@
 import { useEffect } from "react";
 
-import { getSharedQuizzes } from "../../api/quizApi";
+import { getMyQuizzes, getSharedQuizzes } from "../../api/quizApi";
 import { useAppDispatch, useAppSelector } from "../../hooks/appHook";
 
 import QuizHeader from "./QuizHeader";
 import QuizGenerator from "./QuizGenerator";
+import GeneratedQuizzes from "./GeneratedQuizzes";
 import SharedQuizzes from "./SharedQuizzes";
 
 const Quizzes = () => {
   const dispatch = useAppDispatch();
 
-  const { sharedQuizzes, loadingShared } = useAppSelector(
+  const { quizzes, sharedQuizzes, loadingShared } = useAppSelector(
     (state) => state.quiz,
   );
 
   useEffect(() => {
+    dispatch(getMyQuizzes());
     dispatch(getSharedQuizzes());
   }, [dispatch]);
 
@@ -27,8 +29,14 @@ const Quizzes = () => {
           <QuizGenerator />
         </div>
 
+        {quizzes.length > 0 && (
+          <div className="mt-12">
+            <GeneratedQuizzes quizzes={quizzes} />
+          </div>
+        )}
+
         {sharedQuizzes.length > 0 && (
-          <div className="mt-16">
+          <div className="mt-16 pb-10">
             <SharedQuizzes quizzes={sharedQuizzes} loading={loadingShared} />
           </div>
         )}

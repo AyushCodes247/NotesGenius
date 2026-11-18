@@ -1,4 +1,3 @@
-import React from "react";
 import { Route, Routes } from "react-router-dom";
 
 import HomePage from "./Components/HomePage/HomePage";
@@ -15,41 +14,49 @@ import Account from "./Components/Account/Account";
 
 import Quizzes from "./Components/Quizzes/Quizzes";
 import QuizDetails from "./Components/Quizzes/QuizDetails";
+import QuizResult from "./Components/Quizzes/QuizResult";
 
 import AppLayout from "./Components/Layout/AppLayout";
 
 const App = () => {
   return (
-    <AuthInitializer>
-      <Routes>
-        <Route path="/" element={<HomePage />} />
+    <Routes>
+      {/* Public pages */}
+      <Route path="/" element={<HomePage />} />
+      <Route path="/login" element={<Login />} />
+      <Route path="/register" element={<Register />} />
 
-        <Route path="/login" element={<Login />} />
+      {/* Protected application */}
+      <Route
+        element={
+          <AuthInitializer>
+            <ProtectedRoute />
+          </AuthInitializer>
+        }
+      >
+        {/* Normal application pages */}
+        <Route element={<AppLayout />}>
+          <Route path="/dashboard" element={<DashBoard />} />
 
-        <Route path="/register" element={<Register />} />
+          <Route path="/notes" element={<Notes />} />
 
-        <Route element={<ProtectedRoute />}>
-          {/* Normal application pages */}
-          <Route element={<AppLayout />}>
-            <Route path="/dashboard" element={<DashBoard />} />
+          <Route path="/notes/new" element={<NewNote />} />
 
-            <Route path="/notes" element={<Notes />} />
+          <Route path="/quizzes" element={<Quizzes />} />
 
-            <Route path="/notes/new" element={<NewNote />} />
-
-            <Route path="/quizzes" element={<Quizzes />} />
-
-            <Route path="/account" element={<Account />} />
-          </Route>
-
-          {/* Standalone note workspace */}
-          <Route path="/notes/:notesPublicId" element={<NoteWorkspace />} />
-
-          {/* Standalone quiz workspace */}
-          <Route path="/quizzes/:quizPublicId" element={<QuizDetails />} />
+          <Route path="/account" element={<Account />} />
         </Route>
-      </Routes>
-    </AuthInitializer>
+
+        {/* Standalone note workspace */}
+        <Route path="/notes/:notesPublicId" element={<NoteWorkspace />} />
+
+        {/* Standalone quiz details */}
+        <Route path="/quizzes/:quizPublicId" element={<QuizDetails />} />
+
+        {/* Standalone quiz result */}
+        <Route path="/quizzes/:quizPublicId/result" element={<QuizResult />} />
+      </Route>
+    </Routes>
   );
 };
 

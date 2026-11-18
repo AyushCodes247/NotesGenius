@@ -34,6 +34,26 @@ class QuizController {
     },
   );
 
+  getMyQuizzes: RequestHandler = asyncHandler(
+    async (req: Request, res: Response): Promise<unknown> => {
+      const userPublicId = req.user?.publicId;
+
+      if (!userPublicId) {
+        throw new AppError("Unauthorized.", 401);
+      }
+
+      const quizzes = await QuizService.getMyQuizzes({
+        userPublicId,
+      });
+
+      return res.status(200).json({
+        success: true,
+        message: "Quizzes retrieved successfully.",
+        quizzes,
+      });
+    },
+  );
+
   getByPublicId: RequestHandler = asyncHandler(
     async (req: Request, res: Response): Promise<unknown> => {
       const userPublicId = req.user?.publicId;
@@ -173,6 +193,33 @@ class QuizController {
         success: true,
         message: "Quiz statistics retrieved successfully.",
         stats,
+      });
+    },
+  );
+
+  deleteQuiz: RequestHandler = asyncHandler(
+    async (req: Request, res: Response): Promise<unknown> => {
+      const userPublicId = req.user?.publicId;
+
+      if (!userPublicId) {
+        throw new AppError("Unauthorized.", 401);
+      }
+
+      const { quizPublicId } = req.params;
+
+      if (!quizPublicId) {
+        throw new AppError("Quiz public ID is required.", 400);
+      }
+
+      const result = await QuizService.deleteQuiz({
+        userPublicId,
+        quizPublicId: quizPublicId.toString(),
+      });
+
+      return res.status(200).json({
+        success: true,
+        message: "Quiz deleted successfully.",
+        quiz: result,
       });
     },
   );

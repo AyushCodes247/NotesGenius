@@ -1,197 +1,139 @@
 import { useLayoutEffect, useRef, useState } from "react";
-import { NavLink, Outlet, useNavigate } from "react-router-dom";
+import { Menu, X } from "lucide-react";
+import { NavLink, Outlet } from "react-router-dom";
 import gsap from "gsap";
 
-import { BookOpen, Brain, LayoutDashboard, Menu, User, X } from "lucide-react";
+const navItems = [
+  {
+    label: "Dashboard",
+    path: "/dashboard",
+  },
+  {
+    label: "Notes",
+    path: "/notes",
+  },
+  {
+    label: "Quizzes",
+    path: "/quizzes",
+  },
+  {
+    label: "Account",
+    path: "/account",
+  },
+];
 
 const AppLayout = () => {
-  const navigate = useNavigate();
-
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [mobileOpen, setMobileOpen] = useState(false);
 
   const mobileMenuRef = useRef<HTMLDivElement | null>(null);
-  const mobileItemsRef = useRef<HTMLDivElement | null>(null);
-
-  const navItems = [
-    {
-      label: "Dashboard",
-      path: "/dashboard",
-      icon: LayoutDashboard,
-    },
-    {
-      label: "Notes",
-      path: "/notes",
-      icon: BookOpen,
-    },
-    {
-      label: "Quizzes",
-      path: "/quizzes",
-      icon: Brain,
-    },
-    {
-      label: "Account",
-      path: "/account",
-      icon: User,
-    },
-  ];
 
   useLayoutEffect(() => {
-    const menu = mobileMenuRef.current;
-    const items = mobileItemsRef.current;
-
-    if (!menu || !items) return;
-
-    const itemElements = items.children;
-
-    if (mobileMenuOpen) {
-      gsap.set(menu, {
-        height: 0,
-        opacity: 0,
-      });
-
-      gsap.set(itemElements, {
-        opacity: 0,
-        y: -8,
-      });
-
-      const timeline = gsap.timeline();
-
-      timeline.to(menu, {
-        height: "auto",
-        opacity: 1,
-        duration: 0.24,
-        ease: "power2.out",
-      });
-
-      timeline.to(
-        itemElements,
-        {
-          opacity: 1,
-          y: 0,
-          duration: 0.2,
-          stagger: 0.035,
-          ease: "power2.out",
-        },
-        "-=0.12",
-      );
-
-      return () => {
-        timeline.kill();
-      };
+    if (!mobileMenuRef.current) {
+      return;
     }
 
-    gsap.to(menu, {
-      height: 0,
-      opacity: 0,
-      duration: 0.18,
-      ease: "power2.in",
-    });
-
-    gsap.to(itemElements, {
-      opacity: 0,
-      y: -6,
-      duration: 0.12,
-      stagger: 0.02,
-      ease: "power2.in",
-    });
-  }, [mobileMenuOpen]);
-
-  const closeMobileMenu = () => {
-    setMobileMenuOpen(false);
-  };
+    if (mobileOpen) {
+      gsap.fromTo(
+        mobileMenuRef.current,
+        {
+          height: 0,
+          opacity: 0,
+        },
+        {
+          height: "auto",
+          opacity: 1,
+          duration: 0.25,
+          ease: "power2.out",
+        },
+      );
+    } else {
+      gsap.to(mobileMenuRef.current, {
+        height: 0,
+        opacity: 0,
+        duration: 0.2,
+        ease: "power2.inOut",
+      });
+    }
+  }, [mobileOpen]);
 
   return (
-    <div className="flex h-screen flex-col overflow-hidden bg-[#080808] text-[#F5F5F5]">
-      <header className="z-50 shrink-0 border-b border-[#252525] bg-[#080808]">
-        <div className="mx-auto flex h-16 w-full max-w-[1440px] items-center justify-between px-5 sm:px-8 lg:px-10 xl:px-12">
-          {/* Logo */}
-          <button
-            type="button"
-            onClick={() => navigate("/dashboard")}
-            className="shrink-0 text-[15px] font-semibold tracking-[-0.02em] text-[#F5F5F5] transition hover:text-white"
+    <div className="min-h-screen bg-[#080808] text-[#F5F5F5]">
+      <header className="border-b border-white/[0.08] bg-[#080808]">
+        <div className="flex h-14 items-center justify-between px-5 sm:px-7 lg:px-10">
+          <NavLink
+            to="/dashboard"
+            className="text-[15px] font-semibold tracking-[-0.02em] text-white"
           >
             NoteGenius
-          </button>
+          </NavLink>
 
           {/* Desktop navigation */}
           <nav className="hidden items-center gap-1 md:flex">
-            {navItems.map((item) => {
-              const Icon = item.icon;
-
-              return (
-                <NavLink
-                  key={item.path}
-                  to={item.path}
-                  className={({ isActive }) =>
-                    [
-                      "flex items-center gap-2 rounded-lg px-3 py-2 text-sm transition",
-                      isActive
-                        ? "bg-white/[0.06] text-[#F5F5F5]"
-                        : "text-[#737373] hover:bg-white/[0.03] hover:text-[#A3A3A3]",
-                    ].join(" ")
-                  }
-                >
-                  <Icon size={15} strokeWidth={1.8} />
-                  {item.label}
-                </NavLink>
-              );
-            })}
+            {navItems.map((item) => (
+              <NavLink
+                key={item.path}
+                to={item.path}
+                className={({ isActive }) =>
+                  [
+                    "rounded-lg px-3 py-2 text-[12px] font-medium transition-colors",
+                    isActive
+                      ? "bg-white/[0.06] text-white"
+                      : "text-white/40 hover:bg-white/[0.04] hover:text-white/70",
+                  ].join(" ")
+                }
+              >
+                {item.label}
+              </NavLink>
+            ))}
           </nav>
 
-          {/* Mobile menu button */}
+          {/* Mobile menu */}
           <button
             type="button"
-            onClick={() => setMobileMenuOpen((open) => !open)}
-            className="rounded-lg p-2 text-[#737373] transition hover:bg-white/[0.05] hover:text-[#F5F5F5] md:hidden"
-            aria-label={mobileMenuOpen ? "Close navigation" : "Open navigation"}
-            aria-expanded={mobileMenuOpen}
+            onClick={() => setMobileOpen((open) => !open)}
+            className="flex h-9 w-9 items-center justify-center rounded-lg border border-white/[0.08] text-white/60 transition-colors hover:bg-white/[0.04] hover:text-white md:hidden"
+            aria-label={mobileOpen ? "Close navigation" : "Open navigation"}
           >
-            <span
-              className={[
-                "flex transition-transform duration-200",
-                mobileMenuOpen ? "rotate-90" : "rotate-0",
-              ].join(" ")}
-            >
-              {mobileMenuOpen ? <X size={19} /> : <Menu size={19} />}
-            </span>
+            {mobileOpen ? (
+              <X size={17} strokeWidth={1.7} />
+            ) : (
+              <Menu size={17} strokeWidth={1.7} />
+            )}
           </button>
         </div>
 
         {/* Mobile navigation */}
         <div
           ref={mobileMenuRef}
-          className="overflow-hidden border-t border-[#252525] md:hidden"
-          style={{ height: 0, opacity: 0 }}
+          className="overflow-hidden border-t border-white/[0.06] md:hidden"
+          style={{
+            height: 0,
+            opacity: 0,
+          }}
         >
-          <div ref={mobileItemsRef} className="space-y-1 px-5 py-3">
-            {navItems.map((item) => {
-              const Icon = item.icon;
-
-              return (
-                <div key={item.path}>
-                  <NavLink
-                    to={item.path}
-                    onClick={closeMobileMenu}
-                    className={({ isActive }) =>
-                      [
-                        "flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm transition",
-                        isActive
-                          ? "bg-white/[0.06] text-[#F5F5F5]"
-                          : "text-[#737373] hover:bg-white/[0.03] hover:text-[#A3A3A3]",
-                      ].join(" ")
-                    }
-                  >
-                    <Icon size={16} strokeWidth={1.8} />
-                    {item.label}
-                  </NavLink>
-                </div>
-              );
-            })}
-          </div>
+          <nav className="flex flex-col gap-1 p-3">
+            {navItems.map((item) => (
+              <NavLink
+                key={item.path}
+                to={item.path}
+                onClick={() => setMobileOpen(false)}
+                className={({ isActive }) =>
+                  [
+                    "rounded-lg px-3 py-2.5 text-[13px] font-medium transition-colors",
+                    isActive
+                      ? "bg-white/[0.06] text-white"
+                      : "text-white/40 hover:bg-white/[0.04] hover:text-white/70",
+                  ].join(" ")
+                }
+              >
+                {item.label}
+              </NavLink>
+            ))}
+          </nav>
         </div>
       </header>
 
-      <main className="min-h-0 flex-1 overflow-hidden">
+      <main>
         <Outlet />
       </main>
     </div>

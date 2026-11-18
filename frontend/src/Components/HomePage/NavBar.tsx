@@ -240,7 +240,7 @@ const Navbar = () => {
               </button>
 
               <a
-                href="https://github.com"
+                href="https://github.com/AyushCodes247/NotesGenius"
                 target="_blank"
                 rel="noreferrer"
                 onClick={closeMenu}

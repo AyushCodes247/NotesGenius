@@ -1,0 +1,9 @@
+User-agent: *
+Allow: /
+
+Disallow: /dashboard
+Disallow: /notes
+Disallow: /quizzes
+Disallow: /account
+Disallow: /login
+Disallow: /register

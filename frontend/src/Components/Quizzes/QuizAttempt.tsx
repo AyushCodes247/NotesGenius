@@ -4,7 +4,9 @@ import {
   ArrowRight,
   Check,
   CheckCircle2,
+  Lightbulb,
   Loader2,
+  XCircle,
 } from "lucide-react";
 
 import { saveQuizAnswer, submitQuizAttempt } from "../../api/quizApi";
@@ -17,18 +19,30 @@ type QuizAttemptProps = {
 const QuizAttempt = ({ onSubmitted }: QuizAttemptProps) => {
   const dispatch = useAppDispatch();
 
-  const { currentAttempt, savedAnswers, savingAnswer, submittingAttempt } =
-    useAppSelector((state) => state.quiz);
+  const {
+    currentAttempt,
+    currentQuiz,
+    savedAnswers,
+    savingAnswer,
+    submittingAttempt,
+  } = useAppSelector((state) => state.quiz);
 
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   const [pendingOptionId, setPendingOptionId] = useState<string | null>(null);
+  const [showHint, setShowHint] = useState(false);
 
   const questions = currentAttempt?.questions ?? [];
   const currentQuestion = questions[currentQuestionIndex];
 
-  const savedOptionId = currentQuestion
-    ? (savedAnswers[currentQuestion.publicId]?.questionOptionId ?? null)
+  const currentQuizQuestion = currentQuiz?.questions.find(
+    (question) => question.publicId === currentQuestion?.publicId,
+  );
+
+  const savedAnswer = currentQuestion
+    ? (savedAnswers[currentQuestion.publicId] ?? null)
     : null;
+
+  const savedOptionId = savedAnswer?.questionOptionId ?? null;
 
   const selectedOptionId = pendingOptionId ?? savedOptionId;
 
@@ -60,8 +74,16 @@ const QuizAttempt = ({ onSubmitted }: QuizAttemptProps) => {
     currentQuestion.publicId,
   );
 
+  const isCurrentQuestionCorrect = savedAnswer?.isCorrect ?? false;
+
+  const correctOptionNumber = currentQuizQuestion?.correctOptionNumber;
+
+  const correctOption = currentQuestion.options.find(
+    (option) => option.optionNumber === correctOptionNumber,
+  );
+
   const handleSelectOption = (optionPublicId: string) => {
-    if (savingAnswer || submittingAttempt) {
+    if (savingAnswer || submittingAttempt || isCurrentQuestionAnswered) {
       return;
     }
 
@@ -69,7 +91,12 @@ const QuizAttempt = ({ onSubmitted }: QuizAttemptProps) => {
   };
 
   const handleSaveAnswer = async () => {
-    if (!selectedOptionId || savingAnswer || submittingAttempt) {
+    if (
+      !selectedOptionId ||
+      savingAnswer ||
+      submittingAttempt ||
+      isCurrentQuestionAnswered
+    ) {
       return;
     }
 
@@ -83,10 +110,6 @@ const QuizAttempt = ({ onSubmitted }: QuizAttemptProps) => {
 
     if (saveQuizAnswer.fulfilled.match(result)) {
       setPendingOptionId(null);
-
-      if (!isLastQuestion) {
-        setCurrentQuestionIndex((index) => index + 1);
-      }
     }
   };
 
@@ -101,6 +124,22 @@ const QuizAttempt = ({ onSubmitted }: QuizAttemptProps) => {
 
     setCurrentQuestionIndex((index) => index - 1);
     setPendingOptionId(null);
+    setShowHint(false);
+  };
+
+  const handleNext = () => {
+    if (
+      savingAnswer ||
+      submittingAttempt ||
+      !isCurrentQuestionAnswered ||
+      isLastQuestion
+    ) {
+      return;
+    }
+
+    setCurrentQuestionIndex((index) => index + 1);
+    setPendingOptionId(null);
+    setShowHint(false);
   };
 
   const handleQuestionNavigation = (index: number) => {
@@ -110,27 +149,12 @@ const QuizAttempt = ({ onSubmitted }: QuizAttemptProps) => {
 
     setCurrentQuestionIndex(index);
     setPendingOptionId(null);
+    setShowHint(false);
   };
 
   const handleSubmit = async () => {
-    if (savingAnswer || submittingAttempt) {
+    if (savingAnswer || submittingAttempt || !isCurrentQuestionAnswered) {
       return;
-    }
-
-    if (selectedOptionId && !isCurrentQuestionAnswered) {
-      const answerResult = await dispatch(
-        saveQuizAnswer({
-          attemptPublicId: currentAttempt.publicId,
-          questionPublicId: currentQuestion.publicId,
-          questionOptionId: selectedOptionId,
-        }),
-      );
-
-      if (!saveQuizAnswer.fulfilled.match(answerResult)) {
-        return;
-      }
-
-      setPendingOptionId(null);
     }
 
     const result = await dispatch(submitQuizAttempt(currentAttempt.publicId));
@@ -189,7 +213,9 @@ const QuizAttempt = ({ onSubmitted }: QuizAttemptProps) => {
               </h2>
 
               <p className="mt-2 text-[11px] text-white/25">
-                Select one answer.
+                {isCurrentQuestionAnswered
+                  ? "Answer submitted."
+                  : "Select one answer."}
               </p>
             </div>
           </div>
@@ -198,23 +224,44 @@ const QuizAttempt = ({ onSubmitted }: QuizAttemptProps) => {
             {currentQuestion.options.map((option) => {
               const isSelected = selectedOptionId === option.publicId;
 
+              const isCorrectOption =
+                isCurrentQuestionAnswered &&
+                option.optionNumber === correctOptionNumber;
+
+              const isWrongSelectedOption =
+                isCurrentQuestionAnswered &&
+                isSelected &&
+                !savedAnswer?.isCorrect;
+
               return (
                 <button
                   key={option.publicId}
                   type="button"
                   onClick={() => handleSelectOption(option.publicId)}
-                  disabled={savingAnswer || submittingAttempt}
+                  disabled={
+                    savingAnswer ||
+                    submittingAttempt ||
+                    isCurrentQuestionAnswered
+                  }
                   className={`group flex w-full items-center gap-3 rounded-[9px] border px-4 py-3 text-left transition-colors ${
-                    isSelected
-                      ? "border-[#5B8CFF]/40 bg-[#5B8CFF]/[0.08]"
-                      : "border-white/[0.07] bg-white/[0.015] hover:border-white/[0.14] hover:bg-white/[0.025]"
-                  } disabled:cursor-not-allowed disabled:opacity-60`}
+                    isCorrectOption
+                      ? "border-emerald-400/30 bg-emerald-400/[0.07]"
+                      : isWrongSelectedOption
+                        ? "border-red-400/30 bg-red-400/[0.06]"
+                        : isSelected
+                          ? "border-[#5B8CFF]/40 bg-[#5B8CFF]/[0.08]"
+                          : "border-white/[0.07] bg-white/[0.015] hover:border-white/[0.14] hover:bg-white/[0.025]"
+                  } disabled:cursor-not-allowed`}
                 >
                   <span
                     className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full border text-[11px] transition-colors ${
-                      isSelected
-                        ? "border-[#5B8CFF]/50 bg-[#5B8CFF]/10 text-[#7AA3FF]"
-                        : "border-white/[0.10] text-white/35 group-hover:text-white/55"
+                      isCorrectOption
+                        ? "border-emerald-400/40 bg-emerald-400/10 text-emerald-300"
+                        : isWrongSelectedOption
+                          ? "border-red-400/40 bg-red-400/10 text-red-300"
+                          : isSelected
+                            ? "border-[#5B8CFF]/50 bg-[#5B8CFF]/10 text-[#7AA3FF]"
+                            : "border-white/[0.10] text-white/35 group-hover:text-white/55"
                     }`}
                   >
                     {String.fromCharCode(65 + option.optionNumber - 1)}
@@ -222,13 +269,35 @@ const QuizAttempt = ({ onSubmitted }: QuizAttemptProps) => {
 
                   <span
                     className={`flex-1 text-[12px] leading-5 ${
-                      isSelected ? "text-white/85" : "text-white/55"
+                      isCorrectOption
+                        ? "text-emerald-100/90"
+                        : isWrongSelectedOption
+                          ? "text-red-100/80"
+                          : isSelected
+                            ? "text-white/85"
+                            : "text-white/55"
                     }`}
                   >
                     {option.optionText}
                   </span>
 
-                  {isSelected && (
+                  {isCorrectOption && (
+                    <CheckCircle2
+                      size={15}
+                      strokeWidth={1.8}
+                      className="shrink-0 text-emerald-400"
+                    />
+                  )}
+
+                  {isWrongSelectedOption && (
+                    <XCircle
+                      size={15}
+                      strokeWidth={1.8}
+                      className="shrink-0 text-red-400"
+                    />
+                  )}
+
+                  {!isCurrentQuestionAnswered && isSelected && (
                     <Check
                       size={15}
                       strokeWidth={2}
@@ -239,6 +308,95 @@ const QuizAttempt = ({ onSubmitted }: QuizAttemptProps) => {
               );
             })}
           </div>
+
+          {/* Hint */}
+          {currentQuizQuestion?.hint && (
+            <div className="mt-5">
+              <button
+                type="button"
+                onClick={() => setShowHint((visible) => !visible)}
+                className="inline-flex items-center gap-2 text-[11px] text-[#7AA3FF] transition-colors hover:text-white"
+              >
+                <Lightbulb size={14} strokeWidth={1.7} />
+
+                {showHint ? "Hide hint" : "Show hint"}
+              </button>
+
+              {showHint && (
+                <div className="mt-3 rounded-[9px] border border-[#5B8CFF]/15 bg-[#5B8CFF]/[0.035] px-4 py-3.5">
+                  <p className="text-[10px] font-medium uppercase tracking-[0.16em] text-[#7AA3FF]">
+                    Hint
+                  </p>
+
+                  <p className="mt-1.5 text-[12px] leading-5 text-white/45">
+                    {currentQuizQuestion.hint}
+                  </p>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Answer feedback */}
+          {isCurrentQuestionAnswered && (
+            <div className="mt-6 space-y-3">
+              <div
+                className={`rounded-[9px] border px-4 py-3.5 ${
+                  isCurrentQuestionCorrect
+                    ? "border-emerald-400/20 bg-emerald-400/[0.05]"
+                    : "border-red-400/20 bg-red-400/[0.05]"
+                }`}
+              >
+                <div className="flex items-center gap-2">
+                  {isCurrentQuestionCorrect ? (
+                    <CheckCircle2
+                      size={16}
+                      strokeWidth={1.8}
+                      className="text-emerald-400"
+                    />
+                  ) : (
+                    <XCircle
+                      size={16}
+                      strokeWidth={1.8}
+                      className="text-red-400"
+                    />
+                  )}
+
+                  <p
+                    className={`text-[12px] font-medium ${
+                      isCurrentQuestionCorrect
+                        ? "text-emerald-300"
+                        : "text-red-300"
+                    }`}
+                  >
+                    {isCurrentQuestionCorrect
+                      ? "Correct answer"
+                      : "Incorrect answer"}
+                  </p>
+                </div>
+
+                {!isCurrentQuestionCorrect && correctOption && (
+                  <p className="mt-2 text-[12px] leading-5 text-white/50">
+                    Correct answer:{" "}
+                    <span className="text-white/75">
+                      {correctOption.optionText}
+                    </span>
+                  </p>
+                )}
+              </div>
+
+              {currentQuizQuestion?.explanation && (
+                <div className="rounded-[9px] border border-white/[0.07] bg-white/[0.015] px-4 py-3.5">
+                  <p className="text-[10px] font-medium uppercase tracking-[0.16em] text-white/35">
+                    Explanation
+                  </p>
+
+                  <p className="mt-2 text-[12px] leading-5 text-white/50">
+                    {currentQuizQuestion.explanation}
+                  </p>
+                </div>
+              )}
+            </div>
+          )}
 
           <div className="mt-8 flex flex-col gap-3 border-t border-white/[0.06] pt-5 sm:flex-row sm:items-center sm:justify-between">
             <button
@@ -254,7 +412,7 @@ const QuizAttempt = ({ onSubmitted }: QuizAttemptProps) => {
             </button>
 
             <div className="flex flex-col gap-2 sm:flex-row">
-              {!isLastQuestion ? (
+              {!isCurrentQuestionAnswered ? (
                 <button
                   type="button"
                   onClick={handleSaveAnswer}
@@ -268,14 +426,24 @@ const QuizAttempt = ({ onSubmitted }: QuizAttemptProps) => {
                         strokeWidth={1.8}
                         className="animate-spin"
                       />
-                      Saving...
+                      Checking...
                     </>
                   ) : (
                     <>
-                      Save & next
-                      <ArrowRight size={14} strokeWidth={1.7} />
+                      Check answer
+                      <CheckCircle2 size={14} strokeWidth={1.7} />
                     </>
                   )}
+                </button>
+              ) : !isLastQuestion ? (
+                <button
+                  type="button"
+                  onClick={handleNext}
+                  disabled={savingAnswer || submittingAttempt}
+                  className="flex h-10 items-center justify-center gap-2 rounded-[8px] bg-white px-4 text-[12px] font-medium text-black transition-all hover:bg-white/90 disabled:cursor-not-allowed disabled:bg-white/10 disabled:text-white/25"
+                >
+                  Next question
+                  <ArrowRight size={14} strokeWidth={1.7} />
                 </button>
               ) : (
                 <button

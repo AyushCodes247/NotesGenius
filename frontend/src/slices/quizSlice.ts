@@ -2,7 +2,9 @@ import { createSlice, type PayloadAction } from "@reduxjs/toolkit";
 
 import {
   generateQuiz,
+  getMyQuizzes,
   getQuiz,
+  deleteQuiz,
   startQuizAttempt,
   saveQuizAnswer,
   submitQuizAttempt,
@@ -45,6 +47,8 @@ type QuizState = {
   loadingQuiz: boolean;
 
   generating: boolean;
+
+  deleting: boolean;
 
   startingAttempt: boolean;
 
@@ -89,6 +93,8 @@ const initialState: QuizState = {
   loadingQuiz: false,
 
   generating: false,
+
+  deleting: false,
 
   startingAttempt: false,
 
@@ -173,6 +179,30 @@ const quizSlice = createSlice({
       });
 
     // ----------------------------------------------------------------------
+    // Get my quizzes
+    // ----------------------------------------------------------------------
+
+    builder
+      .addCase(getMyQuizzes.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
+      .addCase(
+        getMyQuizzes.fulfilled,
+        (state, action: PayloadAction<Quiz[]>) => {
+          state.loading = false;
+          state.quizzes = action.payload;
+        },
+      )
+      .addCase(getMyQuizzes.rejected, (state, action) => {
+        state.loading = false;
+        state.error =
+          action.payload ??
+          action.error.message ??
+          "Unable to load your quizzes.";
+      });
+
+    // ----------------------------------------------------------------------
     // Get quiz
     // ----------------------------------------------------------------------
 
@@ -192,6 +222,47 @@ const quizSlice = createSlice({
         state.loadingQuiz = false;
         state.error =
           action.payload ?? action.error.message ?? "Unable to load quiz.";
+      });
+
+    // ----------------------------------------------------------------------
+    // Delete quiz
+    // ----------------------------------------------------------------------
+
+    builder
+      .addCase(deleteQuiz.pending, (state) => {
+        state.deleting = true;
+        state.error = null;
+      })
+      .addCase(
+        deleteQuiz.fulfilled,
+        (
+          state,
+          action: PayloadAction<{
+            quizPublicId: string;
+            deletedAt: string;
+          }>,
+        ) => {
+          state.deleting = false;
+
+          const deletedQuizPublicId = action.payload.quizPublicId;
+
+          state.quizzes = state.quizzes.filter(
+            (quiz) => quiz.publicId !== deletedQuizPublicId,
+          );
+
+          if (state.currentQuiz?.quiz.publicId === deletedQuizPublicId) {
+            state.currentQuiz = null;
+            state.currentAttempt = null;
+            state.savedAnswers = {};
+            state.stats = null;
+            state.quizShares = null;
+          }
+        },
+      )
+      .addCase(deleteQuiz.rejected, (state, action) => {
+        state.deleting = false;
+        state.error =
+          action.payload ?? action.error.message ?? "Unable to delete quiz.";
       });
 
     // ----------------------------------------------------------------------

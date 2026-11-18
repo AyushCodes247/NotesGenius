@@ -29,12 +29,21 @@ router.get(
   QuizController.getSharedQuizzes,
 );
 
+router.get("/mine", auth, retrievalRateLimit, QuizController.getMyQuizzes);
+
 router.get(
   "/:quizPublicId",
   auth,
   retrievalRateLimit,
   validate(getQuizSchema),
   QuizController.getByPublicId,
+);
+
+router.delete(
+  "/:quizPublicId",
+  auth,
+  sharingRateLimit,
+  QuizController.deleteQuiz,
 );
 
 router.post(

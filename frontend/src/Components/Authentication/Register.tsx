@@ -480,7 +480,7 @@ const Register = () => {
                     aria-describedby={
                       errors.userhandle ? "rUserhandleError" : undefined
                     }
-                    className={`h-12 w-full rounded-lg border bg-white/[0.035] px-4 text-sm text-white outline-none transition placeholder:text-white/20 hover:border-white/[0.18] focus:bg-white/[0.05] focus:ring-4 focus:ring-[#5B8CFF]/[0.08] ${
+                    className={`h-12 w-full rounded-lg border bg-white/[0.035] px-4 text-sm text-white outline-none transition placeholder:text-white/20 focus:bg-white/[0.05] focus:ring-4 focus:ring-[#5B8CFF]/[0.08] ${
                       errors.userhandle
                         ? "border-red-400/60 focus:border-red-400"
                         : "border-white/[0.10] focus:border-[#5B8CFF]/70"
@@ -524,32 +524,23 @@ const Register = () => {
                           value: 128,
                           message: "Password cannot exceed 128 characters",
                         },
-                        pattern: [
-                          {
-                            value: /[a-z]/,
-                            message:
-                              "Password must contain at least one lowercase letter",
-                          },
-                          {
-                            value: /[A-Z]/,
-                            message:
-                              "Password must contain at least one uppercase letter",
-                          },
-                          {
-                            value: /[0-9]/,
-                            message:
-                              "Password must contain at least one number",
-                          },
-                          {
-                            value: /[^A-Za-z0-9\s]/,
-                            message:
-                              "Password must contain at least one special character",
-                          },
-                          {
-                            value: /^\S+$/,
-                            message: "Password cannot contain whitespace",
-                          },
-                        ],
+                        validate: {
+                          lowercase: (value) =>
+                            /[a-z]/.test(value) ||
+                            "Password must contain at least one lowercase letter",
+                          uppercase: (value) =>
+                            /[A-Z]/.test(value) ||
+                            "Password must contain at least one uppercase letter",
+                          number: (value) =>
+                            /[0-9]/.test(value) ||
+                            "Password must contain at least one number",
+                          special: (value) =>
+                            /[^A-Za-z0-9\s]/.test(value) ||
+                            "Password must contain at least one special character",
+                          noWhitespace: (value) =>
+                            /^\S+$/.test(value) ||
+                            "Password cannot contain whitespace",
+                        },
                       })}
                       id="rPassword"
                       type={showPassword ? "text" : "password"}

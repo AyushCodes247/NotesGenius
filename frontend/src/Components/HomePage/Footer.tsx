@@ -1,6 +1,9 @@
 import { ArrowUpRight, Star } from "lucide-react";
 import { Link } from "react-router-dom";
-import { FaGithub } from "react-icons/fa"
+import { FaGithub } from "react-icons/fa";
+
+const GITHUB_REPO_URL = "https://github.com/AyushCodes247/NotesGenius";
+const GITHUB_ISSUES_URL = "https://github.com/AyushCodes247/NotesGenius/issues";
 
 const Footer = () => {
   return (
@@ -42,12 +45,12 @@ const Footer = () => {
               </Link>
 
               <a
-                href="https://github.com/"
+                href={GITHUB_REPO_URL}
                 target="_blank"
                 rel="noreferrer"
                 className="inline-flex h-11 items-center gap-2 rounded-lg border border-white/10 bg-white/[0.03] px-5 text-sm font-medium text-white/70 transition-colors duration-300 hover:border-white/20 hover:bg-white/[0.06] hover:text-white"
               >
-                <FaGithub size={16} strokeWidth={1.8} />
+                <FaGithub size={16} />
                 GitHub
               </a>
             </div>
@@ -71,7 +74,7 @@ const Footer = () => {
             </p>
 
             <a
-              href="https://github.com/"
+              href={GITHUB_REPO_URL}
               target="_blank"
               rel="noreferrer"
               className="mt-7 inline-flex items-center gap-2 text-xs font-medium text-white/45 transition-colors hover:text-white"
@@ -94,13 +97,6 @@ const Footer = () => {
                 className="w-fit text-sm text-white/45 transition-colors hover:text-white"
               >
                 Notes
-              </Link>
-
-              <Link
-                to="/discussion"
-                className="w-fit text-sm text-white/45 transition-colors hover:text-white"
-              >
-                Discussion
               </Link>
 
               <Link
@@ -150,7 +146,7 @@ const Footer = () => {
 
             <div className="mt-5 flex flex-col gap-3">
               <a
-                href="https://github.com/"
+                href={GITHUB_REPO_URL}
                 target="_blank"
                 rel="noreferrer"
                 className="group flex w-fit items-center gap-1.5 text-sm text-white/45 transition-colors hover:text-white"
@@ -164,7 +160,7 @@ const Footer = () => {
               </a>
 
               <a
-                href="https://github.com/"
+                href={GITHUB_ISSUES_URL}
                 target="_blank"
                 rel="noreferrer"
                 className="group flex w-fit items-center gap-1.5 text-sm text-white/45 transition-colors hover:text-white"
@@ -178,7 +174,7 @@ const Footer = () => {
               </a>
 
               <a
-                href="https://github.com/"
+                href={GITHUB_REPO_URL}
                 target="_blank"
                 rel="noreferrer"
                 className="group flex w-fit items-center gap-1.5 text-sm text-white/45 transition-colors hover:text-white"

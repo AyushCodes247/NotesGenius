@@ -1,3 +1,4 @@
+
 import { createAsyncThunk } from "@reduxjs/toolkit";
 import axios from "axios";
 
@@ -187,6 +188,10 @@ export type RevokeQuizSharePayload = {
   sharePublicId: string;
 };
 
+export type DeleteQuizPayload = {
+  quizPublicId: string;
+};
+
 // --------------------------------------------------------------------------
 // Helpers
 // --------------------------------------------------------------------------
@@ -241,6 +246,32 @@ export const generateQuiz = createAsyncThunk<
 );
 
 // --------------------------------------------------------------------------
+// Get my quizzes
+// --------------------------------------------------------------------------
+
+export const getMyQuizzes = createAsyncThunk<
+  Quiz[],
+  void,
+  {
+    rejectValue: string;
+    state: RootState;
+  }
+>("quiz/getMyQuizzes", async (_, thunkAPI) => {
+  try {
+    const state = thunkAPI.getState();
+
+    const response = await api.get(
+      "/quizzes/mine",
+      getAuthConfig(state.user.accessToken),
+    );
+
+    return response.data.quizzes;
+  } catch (error: unknown) {
+    return thunkAPI.rejectWithValue(getApiErrorMessage(error));
+  }
+});
+
+// --------------------------------------------------------------------------
 // Get quiz
 // --------------------------------------------------------------------------
 
@@ -256,6 +287,35 @@ export const getQuiz = createAsyncThunk<
     const state = thunkAPI.getState();
 
     const response = await api.get(
+      `/quizzes/${quizPublicId}`,
+      getAuthConfig(state.user.accessToken),
+    );
+
+    return response.data.quiz;
+  } catch (error: unknown) {
+    return thunkAPI.rejectWithValue(getApiErrorMessage(error));
+  }
+});
+
+// --------------------------------------------------------------------------
+// Delete quiz
+// --------------------------------------------------------------------------
+
+export const deleteQuiz = createAsyncThunk<
+  {
+    quizPublicId: string;
+    deletedAt: string;
+  },
+  DeleteQuizPayload,
+  {
+    rejectValue: string;
+    state: RootState;
+  }
+>("quiz/delete", async ({ quizPublicId }, thunkAPI) => {
+  try {
+    const state = thunkAPI.getState();
+
+    const response = await api.delete(
       `/quizzes/${quizPublicId}`,
       getAuthConfig(state.user.accessToken),
     );
@@ -306,7 +366,10 @@ export const saveQuizAnswer = createAsyncThunk<
   }
 >(
   "quiz/saveAnswer",
-  async ({ attemptPublicId, questionPublicId, questionOptionId }, thunkAPI) => {
+  async (
+    { attemptPublicId, questionPublicId, questionOptionId },
+    thunkAPI,
+  ) => {
     try {
       const state = thunkAPI.getState();
 

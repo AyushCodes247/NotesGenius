@@ -8,10 +8,11 @@ import { quizOptionTable } from "@schemas/quizOption.schema";
 import { quizAttemptTable } from "@schemas/quizAttempt.schema";
 import { quizAnswerTable } from "@schemas/quizAnswer.schema";
 import { userTable } from "@schemas/user.schema";
-import { quizShareTable } from "@schemas/quizShare.schema";
 import quizPrompt from "@ai/prompts/quiz.prompt.js";
 import generateQuizContent from "@ai/generators/geminiQuiz.generator.js";
 import quizContextService from "./context.service.js";
+import { queryDocument } from "@/pipes/docQuery.pipe.js";
+import { quizShareTable } from "@schemas/quizShare.schema";
 
 interface GenerateQuizInput {
   userPublicId: string;
@@ -39,6 +40,9 @@ class QuizService {
       publicId: string;
       title: string;
       content: string;
+      sourceDocumentId: string | null;
+      sourceText: string | null;
+      topic: string | null;
     } | null = null;
 
     if (notesPublicId) {
@@ -47,6 +51,9 @@ class QuizService {
           publicId: noteTable.publicId,
           title: noteTable.title,
           content: noteTable.content,
+          sourceDocumentId: noteTable.sourceDocumentId,
+          sourceText: noteTable.sourceText,
+          topic: noteTable.topic,
         })
         .from(noteTable)
         .where(
@@ -112,17 +119,66 @@ class QuizService {
         })
         .where(eq(quizTable.publicId, quiz.publicId));
 
-      const resolvedContext = note
-        ? {
+      /*
+       * Resolve quiz context.
+       *
+       * Priority for note-based quizzes:
+       *
+       * 1. Existing generated note content
+       * 2. Uploaded document through RAG
+       * 3. Pasted source text
+       * 4. Note topic
+       *
+       * For non-note generation, use the normal quiz context service.
+       */
+
+      let resolvedContext: {
+        content: string;
+        source: string;
+      };
+
+      if (note) {
+        if (note.content.trim()) {
+          resolvedContext = {
             content: note.content,
-            source: "note" as const,
-          }
-        : await quizContextService.resolve({
+            source: "note",
+          };
+        } else if (note.sourceDocumentId) {
+          const ragResult = await queryDocument(
+            note.sourceDocumentId,
+            `Create a comprehensive study context for a quiz based on the document "${note.title}". Cover the important concepts, definitions, principles, relationships, examples, and other key information from the study material.`,
+          );
+
+          resolvedContext = {
+            content: ragResult.context,
+            source: "document",
+          };
+        } else if (note.sourceText?.trim()) {
+          resolvedContext = {
+            content: note.sourceText,
+            source: "source_text",
+          };
+        } else if (note.topic?.trim()) {
+          resolvedContext = await quizContextService.resolve({
             userPublicId,
             conversationId,
-            topic,
+            topic: note.topic,
             context,
           });
+        } else {
+          resolvedContext = {
+            content: "",
+            source: "none",
+          };
+        }
+      } else {
+        resolvedContext = await quizContextService.resolve({
+          userPublicId,
+          conversationId,
+          topic,
+          context,
+        });
+      }
 
       if (!resolvedContext.content.trim()) {
         throw new AppError(
@@ -328,7 +384,6 @@ class QuizService {
         optionNumber: quizOptionTable.optionNumber,
         optionText: quizOptionTable.optionText,
 
-        // These are only returned to the owner.
         correctOptionNumber: quizQuestionTable.correctOptionNumber,
         explanation: quizQuestionTable.explanation,
         hint: quizQuestionTable.hint,
@@ -418,6 +473,7 @@ class QuizService {
       questions: preparedQuestions,
     };
   }
+
   async startAttempt({
     userPublicId,
     quizPublicId,
@@ -425,7 +481,6 @@ class QuizService {
     userPublicId: string;
     quizPublicId: string;
   }) {
-    // 1. Find the quiz
     const [quiz] = await db
       .select({
         publicId: quizTable.publicId,
@@ -443,10 +498,8 @@ class QuizService {
       throw new AppError("Quiz not found.", 404);
     }
 
-    // 2. Check whether requester is the owner
     const isOwner = quiz.userId === userPublicId;
 
-    // 3. If not owner, check for an active share
     if (!isOwner) {
       const [share] = await db
         .select({
@@ -467,12 +520,10 @@ class QuizService {
       }
     }
 
-    // 4. Quiz must be completed
     if (quiz.generationStatus !== "completed") {
       throw new AppError("Quiz is not available for an attempt.", 409);
     }
 
-    // 5. Get questions and options
     const questions = await db
       .select({
         publicId: quizQuestionTable.publicId,
@@ -496,7 +547,6 @@ class QuizService {
       throw new AppError("Quiz does not contain any questions.", 409);
     }
 
-    // 6. Group options under questions
     const questionMap = new Map<
       string,
       {
@@ -538,7 +588,6 @@ class QuizService {
 
     const preparedQuestions = Array.from(questionMap.values());
 
-    // 7. Verify question count
     if (preparedQuestions.length !== quiz.requestedQuestionCount) {
       throw new AppError(
         "Quiz question count does not match the generated quiz.",
@@ -546,7 +595,6 @@ class QuizService {
       );
     }
 
-    // 8. Create attempt for the requesting user
     const [attempt] = await db
       .insert(quizAttemptTable)
       .values({
@@ -788,15 +836,11 @@ class QuizService {
       .select({
         publicId: quizTable.publicId,
         title: quizTable.title,
-        requestedQuestionCount: quizTable.requestedQuestionCount,
+        userId: quizTable.userId,
       })
       .from(quizTable)
       .where(
-        and(
-          eq(quizTable.publicId, quizPublicId),
-          eq(quizTable.userId, userPublicId),
-          isNull(quizTable.deletedAt),
-        ),
+        and(eq(quizTable.publicId, quizPublicId), isNull(quizTable.deletedAt)),
       )
       .limit(1);
 
@@ -804,6 +848,54 @@ class QuizService {
       throw new AppError("Quiz not found.", 404);
     }
 
+    /*
+     * Determine whether the current user is allowed to view
+     * statistics for this quiz.
+     *
+     * Owner:
+     * - Always allowed.
+     *
+     * Shared user:
+     * - Allowed only when an active share exists.
+     *
+     * Everyone else:
+     * - Forbidden.
+     */
+    const isOwner = quiz.userId === userPublicId;
+
+    if (!isOwner) {
+      const [share] = await db
+        .select({
+          publicId: quizShareTable.publicId,
+        })
+        .from(quizShareTable)
+        .where(
+          and(
+            eq(quizShareTable.quizId, quiz.publicId),
+            eq(quizShareTable.recipientUserId, userPublicId),
+            isNull(quizShareTable.revokedAt),
+          ),
+        )
+        .limit(1);
+
+      if (!share) {
+        throw new AppError(
+          "You do not have permission to view statistics for this quiz.",
+          403,
+        );
+      }
+    }
+
+    /*
+     * Important:
+     * Stats are always calculated only from attempts belonging
+     * to the CURRENT user.
+     *
+     * Therefore:
+     * - Owner sees owner's attempts.
+     * - Shared user sees shared user's attempts.
+     * - Nobody can see another user's attempt history.
+     */
     const attempts = await db
       .select({
         publicId: quizAttemptTable.publicId,
@@ -820,8 +912,11 @@ class QuizService {
           eq(quizAttemptTable.status, "submitted"),
         ),
       )
-      .orderBy(quizAttemptTable.submittedAt);
+      .orderBy(desc(quizAttemptTable.submittedAt));
 
+    /*
+     * No submitted attempts yet.
+     */
     if (attempts.length === 0) {
       return {
         quizPublicId: quiz.publicId,
@@ -836,6 +931,8 @@ class QuizService {
       };
     }
 
+    const totalAttempts = attempts.length;
+
     const scores = attempts.map((attempt) => attempt.score ?? 0);
 
     const percentages = attempts.map((attempt) =>
@@ -845,46 +942,104 @@ class QuizService {
     const bestScore = Math.max(...scores);
 
     const averageScore =
-      scores.reduce((sum, score) => sum + score, 0) / scores.length;
+      scores.reduce((sum, score) => sum + score, 0) / totalAttempts;
 
     const bestPercentage = Math.max(...percentages);
 
     const averagePercentage =
       percentages.reduce((sum, percentage) => sum + percentage, 0) /
-      percentages.length;
+      totalAttempts;
 
-    const latest = attempts[attempts.length - 1];
+    const latestAttempt = attempts[0];
+
+    const attemptHistory = attempts.map((attempt, index) => ({
+      attemptPublicId: attempt.publicId,
+      attemptNumber: totalAttempts - index,
+      score: attempt.score ?? 0,
+      totalQuestions: attempt.totalQuestions,
+      scorePercentage: attempt.scorePercentage ?? "0",
+      submittedAt: attempt.submittedAt!,
+    }));
 
     return {
       quizPublicId: quiz.publicId,
       title: quiz.title,
-
-      totalAttempts: attempts.length,
-
+      totalAttempts,
       bestScore,
-
-      averageScore: Number(averageScore.toFixed(2)),
-
+      averageScore,
       bestPercentage,
+      averagePercentage,
+      latestAttempt: latestAttempt
+        ? {
+            attemptPublicId: latestAttempt.publicId,
+            score: latestAttempt.score ?? 0,
+            totalQuestions: latestAttempt.totalQuestions,
+            scorePercentage: latestAttempt.scorePercentage ?? "0",
+            submittedAt: latestAttempt.submittedAt!,
+          }
+        : null,
+      attemptHistory,
+    };
+  }
 
-      averagePercentage: Number(averagePercentage.toFixed(2)),
+  async deleteQuiz({
+    userPublicId,
+    quizPublicId,
+  }: {
+    userPublicId: string;
+    quizPublicId: string;
+  }) {
+    const [quiz] = await db
+      .select({
+        publicId: quizTable.publicId,
+      })
+      .from(quizTable)
+      .where(
+        and(
+          eq(quizTable.publicId, quizPublicId),
+          eq(quizTable.userId, userPublicId),
+          isNull(quizTable.deletedAt),
+        ),
+      )
+      .limit(1);
 
-      latestAttempt: {
-        attemptPublicId: latest!.publicId,
-        score: latest!.score,
-        totalQuestions: latest!.totalQuestions,
-        scorePercentage: Number(latest!.scorePercentage ?? 0),
-        submittedAt: latest!.submittedAt,
-      },
+    if (!quiz) {
+      throw new AppError("Quiz not found.", 404);
+    }
 
-      attemptHistory: attempts.map((attempt, index) => ({
-        attemptPublicId: attempt.publicId,
-        attemptNumber: index + 1,
-        score: attempt.score,
-        totalQuestions: attempt.totalQuestions,
-        scorePercentage: Number(attempt.scorePercentage ?? 0),
-        submittedAt: attempt.submittedAt,
-      })),
+    const deletedAt = new Date();
+
+    await db.transaction(async (tx) => {
+      await tx
+        .update(quizTable)
+        .set({
+          deletedAt,
+          updatedAt: deletedAt,
+        })
+        .where(
+          and(
+            eq(quizTable.publicId, quiz.publicId),
+            eq(quizTable.userId, userPublicId),
+            isNull(quizTable.deletedAt),
+          ),
+        );
+
+      await tx
+        .update(quizShareTable)
+        .set({
+          revokedAt: deletedAt,
+        })
+        .where(
+          and(
+            eq(quizShareTable.quizId, quiz.publicId),
+            isNull(quizShareTable.revokedAt),
+          ),
+        );
+    });
+
+    return {
+      quizPublicId: quiz.publicId,
+      deletedAt,
     };
   }
 
@@ -897,7 +1052,6 @@ class QuizService {
     quizPublicId: string;
     userHandle: string;
   }) {
-    // 1. Verify quiz ownership
     const [quiz] = await db
       .select({
         publicId: quizTable.publicId,
@@ -917,7 +1071,6 @@ class QuizService {
       throw new AppError("Quiz not found.", 404);
     }
 
-    // 2. Find recipient
     const normalizedHandle = userHandle.trim().toLowerCase();
 
     const [recipient] = await db
@@ -933,12 +1086,10 @@ class QuizService {
       throw new AppError("Recipient user not found.", 404);
     }
 
-    // 3. Prevent sharing with yourself
     if (recipient.publicId === userPublicId) {
       throw new AppError("You cannot share a quiz with yourself.", 400);
     }
 
-    // 4. Check for an existing active share
     const [existingShare] = await db
       .select({
         publicId: quizShareTable.publicId,
@@ -957,7 +1108,6 @@ class QuizService {
       throw new AppError("Quiz is already shared with this user.", 409);
     }
 
-    // 5. Create share
     const [share] = await db
       .insert(quizShareTable)
       .values({
@@ -985,6 +1135,34 @@ class QuizService {
       },
       createdAt: share.createdAt,
     };
+  }
+
+  async getMyQuizzes({ userPublicId }: { userPublicId: string }) {
+    const quizzes = await db
+      .select({
+        publicId: quizTable.publicId,
+        title: quizTable.title,
+        description: quizTable.description,
+        generationMode: quizTable.generationMode,
+        sourceNoteId: quizTable.sourceNoteId,
+        sourceDocumentId: quizTable.sourceDocumentId,
+        sourceTopic: quizTable.sourceTopic,
+        requestedQuestionCount: quizTable.requestedQuestionCount,
+        difficulty: quizTable.difficulty,
+        generationStatus: quizTable.generationStatus,
+        generationError: quizTable.generationError,
+        generatedAt: quizTable.generatedAt,
+        visibility: quizTable.visibility,
+        createdAt: quizTable.createdAt,
+        updatedAt: quizTable.updatedAt,
+      })
+      .from(quizTable)
+      .where(
+        and(eq(quizTable.userId, userPublicId), isNull(quizTable.deletedAt)),
+      )
+      .orderBy(desc(quizTable.createdAt));
+
+    return quizzes;
   }
 
   async getSharedQuizzes({ userPublicId }: { userPublicId: string }) {
@@ -1024,7 +1202,6 @@ class QuizService {
     quizPublicId: string;
     sharePublicId: string;
   }) {
-    // Verify that the quiz belongs to the authenticated user.
     const [quiz] = await db
       .select({
         publicId: quizTable.publicId,
@@ -1043,7 +1220,6 @@ class QuizService {
       throw new AppError("Quiz not found.", 404);
     }
 
-    // Revoke only an active share belonging to this quiz.
     const [share] = await db
       .update(quizShareTable)
       .set({
@@ -1084,7 +1260,6 @@ class QuizService {
     userPublicId: string;
     quizPublicId: string;
   }) {
-    // Verify that the quiz belongs to the authenticated user.
     const [quiz] = await db
       .select({
         publicId: quizTable.publicId,

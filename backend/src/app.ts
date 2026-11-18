@@ -2,25 +2,45 @@ import express, { type Express } from "express";
 import cors from "cors";
 import helmet from "helmet";
 import cookieParser from "cookie-parser";
+
 import globalErrorHandler from "@middlewares/error.middleware.js";
 import env from "@configs/env.config.js";
 import router from "@routes/index.route.js";
-import { appRateLimit } from "@utils/rateLimiters.util.js"
+import { appRateLimit } from "@utils/rateLimiters.util.js";
 
 const app: Express = express();
+
+const allowedOrigins = env.CORS_ORIGIN.split(",")
+  .map((origin) => origin.trim())
+  .filter(Boolean);
+
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
+
 app.use(
   cors({
-    origin: env.CORS_ORIGIN,
+    origin: (origin, callback) => {
+      if (!origin || allowedOrigins.includes(origin)) {
+        callback(null, true);
+        return;
+      }
+
+      callback(new Error("Not allowed by CORS"));
+    },
     credentials: true,
-    methods: ["GET", "POST", "PATCH", "DELETE"],
+    methods: ["GET", "POST", "PATCH", "DELETE", "PUT"],
   }),
 );
+
 app.use(helmet());
+
 app.use(
-  helmet.hsts({ maxAge: 31536000, includeSubDomains: true, preload: true }),
+  helmet.hsts({
+    maxAge: 31536000,
+    includeSubDomains: true,
+    preload: true,
+  }),
 );
 
 app.use(appRateLimit);
