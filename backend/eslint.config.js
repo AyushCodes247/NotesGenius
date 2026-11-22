@@ -41,7 +41,7 @@ export default tseslint.config(
 
       "@typescript-eslint/no-explicit-any": "warn",
 
-      // "no-console": "error",
+      "no-console": "error",
 
       "import-x/no-unresolved": "error",
     },

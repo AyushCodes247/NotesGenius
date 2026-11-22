@@ -1,0 +1,26 @@
+services:
+  redis:
+    image: redis:alpine
+    container_name: notes_genius_redis
+    ports:
+      - "6379:6379"
+    command: redis-server --requirepass Ayush25$
+    volumes:
+      - redis-data:/data
+    restart: unless-stopped
+
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: notegenius-app
+    ports:
+      - "4000:4000"
+    env_file:
+      - ./backend/.env.docker
+    depends_on:
+      - redis
+    restart: unless-stopped
+
+volumes:
+  redis-data:

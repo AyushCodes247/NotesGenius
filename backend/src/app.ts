@@ -1,7 +1,9 @@
-import express, { type Express } from "express";
+import express, { type Express, type Request, type Response } from "express";
 import cors from "cors";
 import helmet from "helmet";
 import cookieParser from "cookie-parser";
+import path from "path";
+import { fileURLToPath } from "node:url";
 
 import globalErrorHandler from "@middlewares/error.middleware.js";
 import env from "@configs/env.config.js";
@@ -43,9 +45,20 @@ app.use(
   }),
 );
 
+const __FILENAME = fileURLToPath(import.meta.url);
+const __DIRNAME = path.dirname(__FILENAME);
+
+const publicDir = path.join(__DIRNAME, "public");
+
+app.use(express.static(publicDir));
+
 app.use(appRateLimit);
 
 app.use("/api/v1", router);
+
+app.get("*name", (_req: Request, res: Response) => {
+  res.sendFile(path.join(publicDir, "index.html"));
+});
 
 app.use(globalErrorHandler);
 
