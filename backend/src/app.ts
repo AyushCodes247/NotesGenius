@@ -54,7 +54,7 @@ app.use(express.static(publicDir));
 
 app.use(appRateLimit);
 
-app.use("/api/v1", router);
+app.use("/", router);
 
 app.get("*name", (_req: Request, res: Response) => {
   res.sendFile(path.join(publicDir, "index.html"));
